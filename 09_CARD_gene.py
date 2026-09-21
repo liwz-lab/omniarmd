@@ -1,12 +1,4 @@
-# ---****----utf-8---****----
-# @File  : 09_CARD_gene.py
-# @Author: Tang Hai
-# @email : tangh25@mail2.sysu.edu.cn
-# @Date  :  2026/06/15
 
-# 直接下载 CARD 全量数据（⭐⭐⭐⭐⭐）
-# 📍官方入口：
-# https://card.mcmaster.ca/download
 import pandas as pd
 import json
 
@@ -18,8 +10,7 @@ aro['CARD Short Name'].value_counts()
 aro['ARO Name'].unique().tolist()
 aro.rename(columns={'CARD Short Name': 'gene_symbol'}, inplace=True)
 
-########################
-ebi=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/EBI_CNSZ_AMR/0730/ebi_knowledge_summary_0730.csv')
+ebi=pd.read_csv('./ebi_knowledge_summary_0730.csv')
 ebi.columns
 ebi['resistance_evidence_label_cn'].unique().tolist()
 ebi_resistance = ebi[
@@ -31,10 +22,9 @@ ebi_resistance = ebi[
 ebi['gene_symbol'].unique().tolist()
 aro['gene_symbol'].unique()
 aro['gene_symbol'].unique().tolist()
-aro.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/AMR_mechanism/CARD_ARO_Gene_mechanism.csv')
+aro.to_csv('./CARD_ARO_Gene_mechanism.csv')
 
 
-#########################
 ebi_res = ebi[
     ebi['resistance_evidence_label_cn'].isin([
         'Strong evidence of resistance',
