@@ -1,8 +1,4 @@
-# ---****----utf-8---****----
-# @File  : 03_ARMD_clean.py
-# @Author: Tang Hai
-# @email : tangh25@mail2.sysu.edu.cn
-# @Date  :  2026/04/15
+
 #########################01_combined_culture_cohort
 import os
 os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/')
