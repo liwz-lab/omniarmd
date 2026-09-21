@@ -1,12 +1,8 @@
 ################time
 import pandas as pd
 from datetime import datetime
-
-# 2. Define masks for the two groups
 mask_mgb = df_final['source'] == 'MGB'
 mask_others = ~mask_mgb
-
-# ==================== Core Step 1: Global timezone-naive initialization ====================
 print("Initializing the global timezone-naive standard time axis...")
 
 # Convert all original timestamps, remove all potential timezones (+00:00),
@@ -16,8 +12,6 @@ df_final['order_time_jittered_std'] = (
     .dt.tz_localize(None)  # Remove timezone information from all timestamps
     .dt.floor('s')
 )
-
-# ==================== Core Step 2: Linear stretching of MGB extreme timestamps ====================
 print("Processing linear stretching of MGB timestamps...")
 
 def to_seconds_robust(val):
