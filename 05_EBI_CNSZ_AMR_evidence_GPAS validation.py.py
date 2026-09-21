@@ -13,7 +13,7 @@ from statsmodels.stats.multitest import multipletests
 
 
 import os
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/EBI_CNSZ_AMR/0730')
+
 # ============================================================================
 # PyCharm settings
 # ============================================================================
