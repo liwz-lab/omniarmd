@@ -1,10 +1,5 @@
-# ---****----utf-8---****----
-# @File  : 03_ARMD_statistic.py
-# @Author: Tang Hai
-# @email : tangh25@mail2.sysu.edu.cn
-# @Date  :  2026/04/16
+
 import os
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3')
 import pandas as pd
 # 设置显示的最大列数，None 表示显示所有列
 pd.set_option('display.max_columns', None)
