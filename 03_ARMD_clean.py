@@ -1,7 +1,6 @@
 
 #########################01_combined_culture_cohort
 import os
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/')
 import pandas as pd
 # 设置显示的最大列数，None 表示显示所有列
 pd.set_option('display.max_columns', None)
