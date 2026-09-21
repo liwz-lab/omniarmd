@@ -1,39 +1,36 @@
 import os
 import pandas as pd
 
-########01culture cohort
+
 Stanford1 = pd.read_csv('./ARMD-Stanford/microbiology_cultures_cohort.csv')
 ECUH1 = pd.read_csv('./ARMD-ECUH/00_microbiology_cultures_cohort.csv')
 UTSW1= pd.read_csv('./ARMD-UTSW/microbiology_cultures_cohort.csv')
-# 查看前几行
+
 print(Stanford1.head())
 print(ECUH1.head())
 print(UTSW1.head())
 
-# 添加来源列
+
 Stanford1['source'] = 'Stanford'
 ECUH1['source'] = 'ECUH'
 UTSW1['source'] = 'UTSW'
 
-# 打印每个数据集的列名
+
 print("Stanford columns:\n", Stanford1.columns.tolist())
 print("ECUH columns:\n", ECUH1.columns.tolist())
 print("UTSW columns:\n", UTSW1.columns.tolist())
 
-# 统一时间列名
+
 Stanford1 = Stanford1.rename(columns={'order_time_jittered_utc': 'order_time_jittered'})
-# 确认列名
 print(Stanford1.columns.tolist())
 
 combined_df = pd.concat([Stanford1, ECUH1, UTSW1], ignore_index=True)
-# 检查结果
 print(combined_df.head())
 print(combined_df['source'].value_counts())
 combined_df.to_csv('./merge/01_combined_culture_cohort.csv', index=False)
 
 #######02microbiology_cultures_adi_scores
 import os
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD')
 import pandas as pd
 Stanford1 = pd.read_csv('./ARMD-Stanford/microbiology_cultures_adi_scores.csv')
 ECUH1 = pd.read_csv('./ARMD-ECUH/01_microbiology_cultures_adi_scores.csv')
