@@ -1,8 +1,4 @@
 
-#####################################################################################################################
-df=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/EBI_CNSZ_AMR/0730/ebi_knowledge_summary_valid_0730.csv')
-
-###################
 import os
 import json
 import logging
@@ -13,8 +9,8 @@ from openai import OpenAI
 # =========================
 # 1. 基础配置
 # =========================
-os.environ["no_proxy"] = "172.25.51.2,localhost,127.0.0.1"
-os.environ["NO_PROXY"] = "172.25.51.2,localhost,127.0.0.1"
+os.environ["no_proxy"] = ""
+os.environ["NO_PROXY"] = ""
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,11 +19,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("Omni-ARMD-KnowledgeGraph")
 
-NEO4J_URI = "bolt://172.25.51.2:7687"
+NEO4J_URI = ""
 NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "secretgraph"
 
-DATASET_PATH = "/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/EBI_CNSZ_AMR/0730/ebi_knowledge_summary_valid_0730.csv"
+DATASET_PATH = ""
 os.environ["OPENROUTER_API_KEY"] = ""
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
