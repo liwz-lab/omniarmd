@@ -3,36 +3,15 @@ import pandas as pd
 import numpy as np
 import polars as pl
 
-# ============================================================
-# 1. 输入
-# ============================================================
 import os
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/omni_bridge')
-# master_v12 是 Polars DataFrame
-# knowledge_summary_valid 是 pandas DataFrame
-# 如果 knowledge_summary_valid 是 csv，可用：
-knowledge_summary = pd.read_csv("/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/EBI_CNSZ_AMR/0730/ebi_knowledge_summary_0730.csv")
-
 ks = knowledge_summary.copy()
 ks.columns
 
-
-# ############################################
-# 1. 基础 prevalence
-############################################
 ks["gene_prevalence_in_R"] = ks["R"] / ks["total_R"]
 ks["gene_prevalence_in_S"] = ks["S"] / ks["total_S"]
 ks["gene_prevalence_in_Non_S"] = ks["gene_non_s"] / ks["total_non_s"]
-
-############################################
-# 2. rate among gene positive（关键指标）
-############################################
 ks["R_rate_among_gene_positive"] = ks["R"] / ks["gene_total"]
 ks["Non_S_rate_among_gene_positive"] = ks["gene_non_s"] / ks["gene_total"]
-
-############################################
-# 3. 防 NaN / inf（必须）
-############################################
 cols = [
     "gene_prevalence_in_R",
     "gene_prevalence_in_S",
@@ -48,11 +27,7 @@ ks["evidence_n"] = ks["total_all"]
 ks = ks.rename(columns={
     "final_score": "GPAS"
 })
-ks.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/EBI_CNSZ_AMR/0730/ebi_knowledge_summary_0730.csv', index=False)
-#############################################
-# ============================================================
-# 2. 标准化 knowledge_summary_valid 的 key
-# ============================================================
+
 
 ks["organism_std"] = (
     ks["organism_std"]
