@@ -27,9 +27,6 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 LLM_MODEL = "moonshotai/kimi-k2.5"
 
-# =========================
-# 2. 工具函数
-# =========================
 
 def safe_str(x):
     if pd.isna(x):
