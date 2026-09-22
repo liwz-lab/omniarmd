@@ -22,7 +22,6 @@ df['organism_std'] = (
     .fillna(df['organism']) 
 )
 
-#查看未匹配项
 df.loc[
     df['organism'].str.upper().isin(mapping_dict.keys()) == False,
     'organism'
@@ -30,24 +29,21 @@ df.loc[
 
 df['organism_std'].unique().tolist()
 
-##########drug
-map_dr = pd.read_csv('./clean/drug_rename.txt', sep='\t', encoding='gbk')
-# 查看
+##########drug mapping
+map_dr = pd.read_csv('./clean/')
 print(map_dr.head())
 
-# 2. 构建字典（统一大写匹配）
 mapping_dict = dict(zip(
     map_dr['antibiotic'].str.strip().str.upper(),
     map_dr['antibiotic_new'].str.strip()
 ))
 
-# 3. 创建新列（不覆盖原始数据）
 df['antibiotic_std'] = (
     df['antibiotic']
     .str.strip()
     .str.upper()
     .map(mapping_dict)
-    .fillna(df['antibiotic'])   # 未匹配保持原值（原始写法）
+    .fillna(df['antibiotic'])   
 )
 
 #查看未匹配项
@@ -72,21 +68,12 @@ df['antibiotic_std'] = df['antibiotic_std'].replace({
 df['antibiotic_std'].unique().tolist()
 
 df['antibiotic'].unique().tolist()
-# 筛选所有属于假单胞菌属的记录
-# 设置显示的最大列数，None 表示显示所有列
-pd.set_option('display.max_columns', None)
-# 设置每行显示的宽度，防止自动换行
-pd.set_option('display.width', 1000)
+
 
 df.susceptibility.unique().tolist()
 df.susceptibility.unique().value_counts
 df['susceptibility'].value_counts
 
-#分类	含义
-# S	敏感（可治疗）
-# I	中介 / 增加暴露仍可能有效
-# R	耐药
-# Non-susceptible	❗ I + R
 
 mapping = {
     'Susceptible': 'S',
@@ -122,7 +109,6 @@ df = df[
     df['susceptibility_std'].isin(['R','I','S'])
 ]
 
-# 1. 定义核心列
 core_id_cols = [
     'anon_id',
     'pat_enc_csn_id_coded',
@@ -131,24 +117,7 @@ core_id_cols = [
     'organism_std'
 ]
 
-# 2. 定义优先级
-priority_map = {'R': 3, 'I': 2, 'S': 1}
-df['priority'] = df['susceptibility_std'].map(priority_map)
-
-# 3. 排序（R优先）
-df_sorted = df.sort_values(
-    by=core_id_cols + ['antibiotic_std', 'priority'],
-    ascending=[True]*len(core_id_cols + ['antibiotic_std']) + [False]
-)
-
-# 4. 去重
-df_cleaned = df_sorted.drop_duplicates(
-    subset=core_id_cols + ['antibiotic_std'],
-    keep='first'
-)
-
-# 5. 转宽表
-df_wide = df_cleaned[
+df_wide = dfd[
     core_id_cols + ['antibiotic_std', 'susceptibility_std']
 ].pivot(
     index=core_id_cols,
@@ -185,7 +154,7 @@ df_final = df_wide.merge(
 df_final.to_csv('./01_combined_culture_cohort2_std_clean_time_wide.csv', index=False)
 
 
-##############################整合所有表############################################################################
+##############################all############################################################################
 import os
 os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/')
 import pandas as pd
