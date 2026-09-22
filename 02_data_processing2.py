@@ -172,7 +172,7 @@ ARMD2=pd.read_csv('03_combined_microbiology_cultures_antibiotic_class_exposure2_
 ARMD['order_time_jittered_std']=ARMD2['order_time_jittered_std']
 ARMD['medication_name_clean_std']=ARMD2['medication_name_clean_std']
 ARMD['antibiotic_class_std'] = ARMD2['antibiotic_class_std']
-CNSZ=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/03.microbiology_cultures_prior_med_std_time_anon_antibiotic_class_std.csv')
+CNSZ=pd.read_csv('03.microbiology_cultures_prior_med_std_time_anon_antibiotic_class_std.csv')
 ARMD.head()
 ARMD.loc[ARMD['source'] == 'Stanford', 'antibiotic'].unique()
 ARMD.loc[ARMD['source'] == 'Stanford', 'organism'].unique()
@@ -181,526 +181,12 @@ ARMD['organism'].unique()
 ARMD.loc[ARMD['source'] == 'Stanford', 'antibiotic_subtype_category'].unique()
 CNSZ.head()
 CNSZ['medication_name_clean_std'].unique()
-
-organism_std = pd.read_csv(
-    '/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/ARMD_organism2.txt',
-    sep='\t',
-    encoding='gb18030'  # 兼容 GBK 并涵盖更多生僻字
-)
-
-# 关键列统一小写 + 去空格
-organism_std['raw'] = organism_std['organism'].str.strip().str.lower()
-organism_std['standard'] = organism_std['organism_std'].str.strip().str.lower()
-ARMD['organism_clean'] = (
-    ARMD['organism']
-    .astype(str)
-    .str.strip()
-    .str.lower()
-)
-mapping_dict = dict(zip(organism_std['raw'], organism_std['standard']))
-ARMD['organism_std'] = ARMD['organism_clean'].map(mapping_dict)
-unmatched = ARMD.loc[ARMD['organism_std'].isna(), 'organism_clean'].unique()
-print(len(unmatched))
-print(unmatched)
-
-import pandas as pd
-
-# =================================================================
-# 1. 核心映射统计审计
-# =================================================================
-total_raw_unique = ARMD['organism_clean'].nunique()
-matched_unique = ARMD['organism_std'].dropna().nunique()
-unmatched_unique = len(unmatched)
-
-print("=" * 60)
-print("🧬 ARMD 菌名映射大盘审计报告")
-print("=" * 60)
-print(f"📊 原始数据中唯一菌名总数 (organism_clean): {total_raw_unique} 类")
-print(f"✅ 成功映射的标准菌名总数 (organism_std):   {matched_unique} 类")
-print(f"❌ 未能命中的标准菌名总数 (unmatched):      {unmatched_unique} 类")
-print("-" * 60)
-
-# =================================================================
-# 2. 输出已成功匹配的对照对 (Sampling Top 30 或全量)
-# =================================================================
-print("\n🔥 [📌 部分已成功匹配的对照对 (Raw -> Standard)]")
-print("-" * 60)
-
-# 提取当前主表中已经成功映射的唯一配对
-matched_pairs = (
-    ARMD[ARMD['organism_std'].notna()][['organism_clean', 'organism_std']]
-    .drop_duplicates()
-    .reset_index(drop=True)
-)
-
-# 打印前 30 个成功匹配对供审阅（若需全量，可将 .head(30) 去掉）
-for idx, row in matched_pairs.head(600).iterrows():
-    print(f"[{idx + 1:03d}]  {row['organism_clean']}  ===>  {row['organism_std']}")
-
-if len(matched_pairs) > 600:
-    print(f"... 还有 {len(matched_pairs) - 600} 个成功匹配对未全量显示 ...")
-
-# =================================================================
-# 3. 输出未成功匹配的残余名单 (Unmatched)
-# =================================================================
-print("\n🚨 [❌ 尚未成功匹配的残余名单 (需在 ARMD_organism2.txt 中补漏)]")
-print("-" * 60)
-
-if unmatched_unique == 0:
-    print("✨ 完美！大盘所有菌名已 100% 成功标准化映射，无任何残余。")
-else:
-    # 过滤掉常见的空值和非菌名噪声提示
-    academic_unmatched = [
-        x for x in unmatched
-        if str(x).lower() not in ['nan', 'null', 'other', 'verified']
-    ]
-
-    print(f"发现 {len(academic_unmatched)} 个实质性未匹配菌名，请在标准表中添加以下条目的映射：")
-    for idx, name in enumerate(academic_unmatched):
-        print(f" 🔴 未匹配 [{idx + 1:02d}]: {name}")
-print("=" * 60)
-
-###########################
-# 1. 定义未匹配补丁字典
-patch_dict = {
-    "bifidobacterium species": "bifidobacterium", "cutibacterium acnes": "cutibacterium acnes",
-    "cutibacterium avidum": "cutibacterium avidum", "actinomyces odontolyticus": "actinomyces odontolyticus",
-    "staphylococcus saccharolyticus": "staphylococcus saccharolyticus", "propionibacterium species": "propionibacterium",
-    "cutibacterium granulosum": "cutibacterium granulosum", "enterobacter amnigenus 2": "enterobacter amnigenus",
-    "mycobacterium mucogenicum group": "mycobacterium mucogenicum group", "mycobacterium smegmatis group": "mycobacterium smegmatis group",
-    "sphingobacterium": "sphingobacterium", "shigella flexneri": "shigella flexneri",
-    "shigella sonnei": "shigella sonnei", "leifsonia": "leifsonia",
-    "porphyromonas species": "porphyromonas", "clostridioides difficile": "clostridioides difficile",
-    "roseomonas species": "roseomonas", "comomonas": "comamonas",
-    "corynebacterium kroppenstedtii": "corynebacterium kroppenstedtii", "corynebacterium afer/coyleae": "corynebacterium afer/coyleae",
-    "prevotella disiens": "prevotella disiens", "cellulosimicrobium species": "cellulosimicrobium",
-    "prevotella denticola": "prevotella denticola", "zzzclostridium difficile": "clostridioides difficile",
-    "clostridium butyricum": "clostridium butyricum", "prevotella loescheii": "prevotella loescheii",
-    "prevotella bivia": "prevotella bivia", "culture positive gram positive rod": "gram-positive rods",
-    "strep. species - nonhemolytic": "non-haemolytic streptococcus", "corynebacterium species group g": "corynebacterium",
-    "corynebacterium xerosis": "corynebacterium xerosis", "corynebacterium bovis": "corynebacterium bovis",
-    "cellulomonas species": "cellulomonas", "streptococcus cristatus": "streptococcus cristatus",
-    "rothia dentocariosa": "rothia dentocariosa", "staphylococcus aureus, small colony variant": "staphylococcus aureus",
-    "streptococcus sanguis i": "streptococcus sanguis", "finegoldia magna": "finegoldia magna",
-    "turicella": "turicella", "trueperella species": "trueperella",
-    "arthrobacter species": "arthrobacter", "klebsiella terrigena": "raoultella terrigena",
-    "enterobacter intermedius": "enterobacter intermedius", "enterobacter amnigenus biogroup": "enterobacter amnigenus",
-    "gram negative rod glucose fermenter": "fermenting gram-negative rods", "salmonella enteriditis": "salmonella enteritidis",
-    "salmonella hadar": "salmonica enterica", "gram negative rod nonfermenter": "nonfermenting gram-negative rods",
-    "fermenting gram negative rod": "fermenting gram-negative rods", "heavy morganella morganii": "morganella morganii",
-    "gram negative rod glucose nonfermenter": "nonfermenting gram-negative rods", "haemophilus paraphrophilus": "aggregatibacter paraphrophilus",
-    "staphylococcus cohnii subspecies urealyticum": "staphylococcus cohnii", "k pneumoniae": "klebsiella pneumoniae",
-    "enterobacter agglomerans group": "pantoea agglomerans group", "chryseobacterium flavobacterium indologenes": "chryseobacterium indologenes",
-    "cedecea species": "cedecea", "pantoea": "pantoea",
-    "aeromonas hydrophila complex": "aeromonas hydrophila complex", "serratia liquefaciens complex": "serratia liquefaciens complex",
-    "group d enterococcus": "enterococcus", "gram negative rod nonfermenter species": "nonfermenting gram-negative rods",
-    "gram negative rod fermenter species": "fermenting gram-negative rods", "staphylococcus capitis subspecies ureolyticus": "staphylococcus capitis",
-    "eschericia coli": "escherichia coli", "e. brevis": "empedobacter brevis",
-    "providenicia rettgeri": "providencia rettgeri", "comamonas testosteroni": "comamonas testosteroni",
-    "achromobacter xylosoxidan ss xylosoxidans": "achromobacter xylosoxidans", "achromobacter alcaligenes xylosoxidans ss xylosoxidans": "achromobacter xylosoxidans",
-    "achromobacter alcaligenes xylosoxidans": "achromobacter xylosoxidans", "nonfermenter species": "nonfermenting gram-negative rods",
-    "achromobacter xylosoxidans ss xylosoxidans": "achromobacter xylosoxidans", "chryseobacterium flavobacterium meningosepticum": "elizabethkingia meningoseptica",
-    "delftia comamonas acidovorans": "delftia acidovorans", "achromobacter alcaligenes xylosoxidans ss dentrificans": "achromobacter xylosoxidans",
-    "sphingomonas species": "sphingomonas", "achromobacter xylosoxidans ss denitrificans": "achromobacter xylosoxidans",
-    "ochrobactrum intermedium": "ochrobactrum intermedium", "brucella": "brucella",
-    "chromobacterium": "chromobacterium", "streptococcus avium": "enterococcus avium",
-    "coryneform gram positive rod": "gram-positive rods", "streptococcus beta hemolytic group f": "beta-haemolytic streptococcus",
-    "group d streptococcus": "streptococcus", "streptococci beta hemolytic group g": "beta-haemolytic streptococcus",
-    "strep group b": "streptococcus agalactiae", "xylosoxidans": "achromobacter xylosoxidans",
-    "salmonella bredeney": "salmonella enterica", "alcaligenes xylosoxidans ss xylosoxidans": "achromobacter xylosoxidans",
-    "oropharyngeal": "uncommon bacterial", "yersinia pseudotuberculosis": "yersinia pseudotuberculosis",
-    "pantoea enterobacter agglomerans": "pantoea agglomerans", "nonfermenting gram negative rod": "nonfermenting gram-negative rods",
-    "staphyococcus saprophyticus": "staphylococcus saprophyticus", "pseudomonas paucimobilis": "sphingomonas paucimobilis",
-    "shewanella algae": "shewanella algae", "ralstonia pseudomonas pickettii": "ralstonia pickettii",
-    "sphingomonas pseudomonas paucimobilis": "sphingomonas paucimobilis", "achromobacter xylosixidans": "achromobacter xylosoxidans",
-    "herbaspirillum seropedicae": "herbaspirillum seropedicae", "micrococcus": "micrococcus",
-    "propionibacterium acnes": "cutibacterium acnes", "elizabethkingia anophelis": "elizabethkingia anophelis",
-    "group d enterococci": "enterococcus", "mycobacterium fortuitum smegmatis": "mycobacterium fortuitum/smegmatis group",
-    "achromobacter xylosoxidans biotype 2": "achromobacter xylosoxidans", "alcaligenes piechaudii": "achromobacter piechaudii",
-    "alcaligenes axylosoxidans": "achromobacter xylosoxidans", "pseudomonas alcaligenes": "pseudomonas alcaligenes",
-    "aerococcus sanguicola": "aerococcus sanguicola", "chryseobacterium indologenes/gleum": "chryseobacterium indologenes/gleum",
-    "achromobacter piechaudii": "achromobacter piechaudii", "kluvera cryocrescens": "kluyvera cryocrescens",
-    "mycobacterium fortuitum smegmatis group": "mycobacterium fortuitum/smegmatis group", "pediococcus sp": "pediococcus",
-    "nocardia abscessus complex": "nocardia abscessus complex", "nontuberculosis mycobacterium": "nontuberculous mycobacterium",
-    "enterococcus faecalis biotype 2": "enterococcus faecalis", "enterococcus raffinosus group d": "enterococcus raffinosus",
-    "nocardia cyriacigeorgica complex": "nocardia cyriacigeorgica complex", "psychrobacter immobilis": "psychrobacter immobilis",
-    "nocardia brasiliensis": "nocardia brasiliensis", "chryseobacterium/sphingobacterium species": "chryseobacterium/sphingobacterium",
-    "alcaligenes sp": "alcaligenes", "achromobacter xylosoxidans ssp denitrificans": "achromobacter xylosoxidans",
-    "alcaligenes xylosoxydans": "achromobacter xylosoxidans", "biotype4 pseudomonas aeruginosa": "pseudomonas aeruginosa",
-    "oligella species": "oligella", "shigella flexneri 3a": "shigella flexneri",
-    "species acinetobacter species": "acinetobacter", "psychrobacter species": "psychrobacter",
-    "enterobacter agglomerans complex": "pantoea agglomerans group", "citrobacter amalonaticuskoseri": "citrobacter amalonaticus/koseri",
-    "achromobacter xylosoxidans/ruhlandii": "achromobacter xylosoxidans/ruhlandii", "cupriavidus gilardii": "cupriavidus gilardii",
-    "nocardia veterana": "nocardia veterana", "enterobacter cancerogenous": "enterobacter cancerogenus",
-    "nocardia cyriacgeorgica": "nocardia cyriacigeorgica", "nocardia transvalensiswallacei": "nocardia transvalensis/wallacei",
-    "streptococcus milleri group": "streptococcus anginosus group", "vibrio damsela": "photobacterium damselae",
-    "mycobacterium chelonae/abscessus complex": "mycobacterium chelonae/abscessus complex", "brevundimonas species": "brevundimonas",
-    "shigella species isolate": "shigella", "pandoraea apista": "pandoraea apista",
-    "mycobacterium simiae": "mycobacterium simiae", "mycobacterium neworleansenseporcinum": "mycobacterium neworleansense/porcinum",
-    "mycobacterium conceptionense/houstonese/senegalense": "mycobacterium conceptionense/houstonense/senegalense", "mycobacterium avium complex many": "mycobacterium avium complex",
-    "acinetobacter baumannihaemolyticus": "acinetobacter baumannii/haemolyticus", "gamma streptococcus": "gamma-haemolytic streptococcus",
-    "klebsiella oxytoca/raoultella species": "klebsiella oxytoca/raoultella", "burkholderia multivirans": "burkholderia multivorans",
-    "nocarida cyriacigeorgica": "nocardia cyriacigeorgica", "nocardia abscessus": "nocardia abscessus",
-    "mycobacterium abscessus subsp abscessus": "mycobacterium abscessus", "serratia species not": "serratia",
-    "nocardia beijingensis": "nocardia beijingensis", "myroides odaratus": "myroides odoratus",
-    "mycobacterium marinum": "mycobacterium marinum", "nocardia neocaledoniensis": "nocardia neocaledoniensis",
-    "nocarida farcinica": "nocardia farcinica", "klebsiella oxytoca raoultella ornithinolytica": "klebsiella oxytoca/raoultella ornithinolytica",
-    "streptococcus salivariusvestibularis group": "streptococcus salivarius group", "sphingobium yanoikuyae": "sphingobium yanoikuyae",
-    "klebsiella pneumoniaeoxytoca": "klebsiella pneumoniae/oxytoca", "massilia timonae": "massilia timonae",
-    "mixta calidagaviniae/intestinalis": "mixta calida/gaviniae/intestinalis", "mycobacterium kansasii complex": "mycobacterium kansasii complex",
-    "shigella dysenteriae": "shigella dysenteriae", "gram variable rods": "gram-indeterminate rods",
-    "cronobacter species": "cronobacter", "ciprofloxacin resistant": "uncommon bacterial",
-    "nocardia pseudobrasiliensis": "nocardia pseudobrasiliensis", "nocardia paucivorans": "nocardia paucivorans",
-    "nocardia kruczakiae": "nocardia kruczakiae", "shigella boydii": "shigella boydii"
-}
-
-# 2. 合并已有字典与补丁字典
-mapping_dict.update(patch_dict)
-
-# 3. 重新进行映射
-ARMD['organism_std'] = ARMD['organism_clean'].map(mapping_dict)
-
-# 4. 最终验证未匹配数
-unmatched_final = ARMD.loc[ARMD['organism_std'].isna(), 'organism_clean'].unique()
-print(f"📌 更新后未匹配残余数量: {len(unmatched_final)} 类")
-# 输出这 4 个未匹配的原始条目
-print(ARMD.loc[ARMD['organism_std'].isna(), 'organism_clean'].unique())
-# 1. 追加最后 4 个非菌名标签的清洗映射
-final_patch = {
-    "other": "uncommon bacterial",
-    "verified": "uncommon bacterial",
-    "null": None,
-    "nan": None
-}
-
-# 2. 更新到你的主字典中
-mapping_dict.update(final_patch)
-
-# 3. 重新执行终极映射
-ARMD['organism_std'] = ARMD['organism_clean'].map(mapping_dict)
-
-# 4. 再次验证未匹配残余数量
-unmatched_final = ARMD.loc[ARMD['organism_std'].isna() & ARMD['organism_clean'].notna(), 'organism_clean'].unique()
-# 过滤掉已经是 None/NaN 的系统级空值，只看有没有漏网的“文本”
-remaining_text_cleans = [x for x in unmatched_final if str(x).lower() not in ['nan', 'null', 'none', '']]
-
-print(f"🎉 终极对齐验证 —— 残余未匹配文本物种数: {len(remaining_text_cleans)} 类")
-
-import pandas as pd
-import numpy as np
-
-# ==========================================
-# 1. 构建全量抗感染药物成分归一化映射字典
-# ==========================================
-antibiotic_normalization_mapping = {
-    # --- 大小写首字母大写转换 (原始带大写的项) ---
-    'Rifampin': 'rifampin',
-    'Colistin': 'colistin',
-    'Linezolid': 'linezolid',
-    'Minocycline': 'minocycline',
-    'Clarithromycin': 'clarithromycin',
-    'Ertapenem': 'ertapenem',
-    'Aztreonam': 'aztreonam',
-    'Metronidazole': 'metronidazole',
-    'Cefpodoxime': 'cefpodoxime',
-    'Ethambutol': 'ethambutol',
-    'Amikacin': 'amikacin',
-    'Cefepime': 'cefepime',
-    'Cefazolin': 'cefazolin',
-    'Cefoxitin': 'cefoxitin',
-    'Meropenem': 'meropenem',
-    'Ampicillin': 'ampicillin',
-    'Gentamicin': 'gentamicin',
-    'Penicillin': 'penicillin',
-    'Vancomycin': 'vancomycin',
-    'Ceftazidime': 'ceftazidime',
-    'Ceftriaxone': 'ceftriaxone',
-    'Erythromycin': 'erythromycin',
-    'Levofloxacin': 'levofloxacin',
-    'Moxifloxacin': 'moxifloxacin',
-    'Ciprofloxacin': 'ciprofloxacin',
-    'Nitrofurantoin': 'nitrofurantoin',
-    'Trimethoprim': 'trimethoprim',
-    'Azithromycin': 'azithromycin',
-    'Ofloxacin': 'ofloxacin',
-    'Gatifloxacin': 'gatifloxacin',
-    'Rifabutin': 'rifabutin',
-    'Isoniazid': 'isoniazid',
-
-    # --- 商品名及下划线变体 -> 统一标准斜杠复方 ---
-    'Augmentin': 'amoxicillin/clavulanic acid',
-    'amoxicillin_clavulanate': 'amoxicillin/clavulanic acid',
-    'ampicillin_sulbactam': 'ampicillin/sulbactam',
-    'trimethoprim_sulfamethoxazole': 'trimethoprim/sulfamethoxazole',
-    'piperacillin_tazobactam': 'piperacillin/tazobactam',
-    'ceftazidime_avibactam': 'ceftazidime/avibactam',
-    'meropenem_vaborbactam': 'meropenem/vaborbactam',
-    'ceftolozane_tazobactam': 'ceftolozane/tazobactam',
-    'imipenem_relebactam': 'imipenem/relebactam',
-
-    # --- 抗真菌药下划线与大小写纠正 ---
-    'amphotericin_B': 'amphotericin b',
-    'amphotericin B': 'amphotericin b',
-
-    # --- 带有特殊字符或异常符号的项 ---
-    'nalidixic\xa0acid': 'nalidixic acid',
-
-    # --- 无效垃圾值清洗 ---
-    'Null': np.nan,
-    'null': np.nan,
-
-    # -------------------------------------------------------------
-    # 【项目特定合并建议】
-    # 目标数组中没有包含以下这部分原始药名，为了向你的 78个标准目标靠拢，
-    # 临床药理学上通常建立如下的归类或替代映射：
-    # -------------------------------------------------------------
-    'sulfamethoxazole': 'sulfamethoxazole/trimethoprim',  # 单药临床极少，通常与目标复方靠拢
-    'ticarcillin_clavulanate': 'piperacillin/tazobactam',  # 同属广谱青霉素酶抑制剂复方
-    'cephalothin': 'cefazolin',  # 同属一代头孢，临床常做敏感性替代
-    'cefamandole': 'cefuroxime',  # 同属二代头孢
-    'spectinomycin': 'tobramycin',  # 同属氨基糖苷类相似物
-    'streptomycin': 'amikacin',  # 氨基糖苷类抗结核/重症替代
-    'kanamycin': 'amikacin',  # 二线抗结核氨基糖苷类
-    'capreomycin': 'amikacin',  # aminoglycoside-like
-    'meropenem_imipenem': 'meropenem',  # 碳青霉烯复合型回归单药
-    'ceftazidime_clavulanate': 'ceftazidime/avibactam',  # 三代头孢酶抑制剂对齐
-    'cefotaxime_clavulanate': 'cefotaxime'  # 归入母药
-}
-
-# ==========================================
-# 2. 执行数据替换清洗流水线
-# ==========================================
-
-# 执行字典映射转换
-ARMD['resistant_antibiotic_std'] = ARMD['antibiotic'].replace(antibiotic_normalization_mapping)
-
-# 确保所有纯文本格式的药物名称全部强制转为小写（除了特殊缩写），防止漏网之鱼
-# 这里利用 lambda 表达式跳过 float(nan)
-ARMD['resistant_antibiotic_std'] = ARMD['resistant_antibiotic_std'].apply(lambda x: x.strip() if isinstance(x, str) else x)
-
-# ==========================================
-# 3. 验证清洗结果
-# ==========================================
-# 获取清洗去空后的唯一值
-cleaned_unique = ARMD['resistant_antibiotic_std'].dropna().unique()
-
-# 定义你指定的 78个标准目标集合（用于审计对比）
-target_78_antibiotics = set([
-    'cefadroxil', 'penicillin', 'ethambutol', 'trimethoprim/sulfamethoxazole', 'tobramycin',
-    'cefepime', 'erythromycin', 'minocycline', 'ofloxacin', 'linezolid', 'clarithromycin',
-    'fosfomycin', 'isoniazid', 'cephalexin', 'amikacin', 'trimethoprim', 'ciprofloxacin',
-    'doxycycline', 'ampicillin', 'cefoxitin', 'amoxicillin/clavulanic acid', 'aztreonam',
-    'silver sulfadiazine', 'levofloxacin', 'ceftazidime', 'gatifloxacin', 'dapsone',
-    'nitrofurantoin', 'gentamicin', 'methenamine', 'cefdinir', 'rifabutin', 'meropenem',
-    'fidaxomicin', 'vancomycin', 'rifaximin', 'moxifloxacin', 'dicloxacillin', 'metronidazole',
-    'tedizolid', 'cefuroxime', 'ertapenem', 'colistin', 'rifampin', 'cefazolin', 'azithromycin',
-    'amoxicillin', 'cefpodoxime', 'ceftriaxone', 'clindamycin', 'piperacillin/tazobactam',
-    'sulfamethoxazole/trimethoprim', 'fluconazole', 'micafungin', 'ampicillin/sulbactam',
-    'cefixime', 'oxacillin', 'cefotetan', 'daptomycin', 'imipenem', 'ceftazidime/avibactam',
-    'itraconazole', 'voriconazole', 'tetracycline', 'amphotericin b', 'posaconazole',
-    'ceftaroline', 'nafcillin', 'caspofungin', 'dalbavancin', 'cefiderocol', 'tigecycline',
-    'ceftolozane/tazobactam', 'cefotaxime', 'meropenem/vaborbactam', 'eravacycline',
-    'imipenem/relebactam', 'omadacycline', 'delafloxacin'
-])
-
-print("======= 💊 ARMD 抗感染药物名称归一化报告 =======")
-print("1. 清洗后的药物唯一值总数 (去空):", len(cleaned_unique))
-
-# 找出不符合 78 个标准的漏网药物
-unmatched = [med for med in cleaned_unique if med not in target_78_antibiotics]
-if len(unmatched) == 0:
-    print("✨ [治理成功]：原始数组中的全部变体已完美、百分之百地锁定在你指定的 78 个标准药物集合中！")
-else:
-    print("⚠️ [审计提示]：以下药物属于数据集特有，已为你安全保留原样值：", unmatched)
-################
-# 1. 针对这 21 个特有药物的【补充药物成分归一化字典】
-# ==========================================
-supplement_antibiotic_mapping = {
-    'quinupristin_dalfopristin': 'quinupristin/dalfopristin',
-    'aztreonam_avibactam': 'aztreonam/avibactam',
-    'polymyxin_B': 'polymyxin b',
-    'chloramphenicol': 'chloramphenicol',
-    'piperacillin': 'piperacillin',
-    'cefaclor': 'cefaclor',
-    'flucytosine': 'flucytosine',
-    'anidulafungin': 'anidulafungin',
-    'isavuconazole': 'isavuconazole',
-    'terbinafine': 'terbinafine',
-    'clofazimine': 'clofazimine',
-    'pyrazinamide': 'pyrazinamide',
-    'cycloserine': 'cycloserine',
-    'ethionamide': 'ethionamide',
-    'bedaquiline': 'bedaquiline',
-    'telavancin': 'telavancin',
-    'miconazole': 'miconazole',
-    'plazomicin': 'plazomicin',
-    'doripenem': 'doripenem',
-    'nalidixic acid': 'nalidixic acid',
-    'norfloxacin': 'norfloxacin'
-}
-
-# 将补充字典合并到你之前的全量 antibiotic_normalization_mapping 中
-antibiotic_normalization_mapping.update(supplement_antibiotic_mapping)
-
-# 执行字典映射转换
-ARMD['resistant_antibiotic_std'] = ARMD['antibiotic'].replace(antibiotic_normalization_mapping)
-
-# 确保所有纯文本格式的药物名称全部强制转为小写（除了特殊缩写），防止漏网之鱼
-# 这里利用 lambda 表达式跳过 float(nan)
-ARMD['resistant_antibiotic_std'] = ARMD['resistant_antibiotic_std'].apply(lambda x: x.strip() if isinstance(x, str) else x)
-
-# ==========================================
-# 3. 验证清洗结果
-# ==========================================
-# 获取清洗去空后的唯一值
-cleaned_unique = ARMD['resistant_antibiotic_std'].dropna().unique()
-
-# 定义你指定的 78个标准目标集合（用于审计对比）
-target_78_antibiotics = set([
-    'cefadroxil', 'penicillin', 'ethambutol', 'trimethoprim/sulfamethoxazole', 'tobramycin',
-    'cefepime', 'erythromycin', 'minocycline', 'ofloxacin', 'linezolid', 'clarithromycin',
-    'fosfomycin', 'isoniazid', 'cephalexin', 'amikacin', 'trimethoprim', 'ciprofloxacin',
-    'doxycycline', 'ampicillin', 'cefoxitin', 'amoxicillin/clavulanic acid', 'aztreonam',
-    'silver sulfadiazine', 'levofloxacin', 'ceftazidime', 'gatifloxacin', 'dapsone',
-    'nitrofurantoin', 'gentamicin', 'methenamine', 'cefdinir', 'rifabutin', 'meropenem',
-    'fidaxomicin', 'vancomycin', 'rifaximin', 'moxifloxacin', 'dicloxacillin', 'metronidazole',
-    'tedizolid', 'cefuroxime', 'ertapenem', 'colistin', 'rifampin', 'cefazolin', 'azithromycin',
-    'amoxicillin', 'cefpodoxime', 'ceftriaxone', 'clindamycin', 'piperacillin/tazobactam',
-    'sulfamethoxazole/trimethoprim', 'fluconazole', 'micafungin', 'ampicillin/sulbactam',
-    'cefixime', 'oxacillin', 'cefotetan', 'daptomycin', 'imipenem', 'ceftazidime/avibactam',
-    'itraconazole', 'voriconazole', 'tetracycline', 'amphotericin b', 'posaconazole',
-    'ceftaroline', 'nafcillin', 'caspofungin', 'dalbavancin', 'cefiderocol', 'tigecycline',
-    'ceftolozane/tazobactam', 'cefotaxime', 'meropenem/vaborbactam', 'eravacycline',
-    'imipenem/relebactam', 'omadacycline', 'delafloxacin'
-])
-
-print("======= 💊 ARMD 抗感染药物名称归一化报告 =======")
-print("1. 清洗后的药物唯一值总数 (去空):", len(cleaned_unique))
-
-# 找出不符合 78 个标准的漏网药物
-unmatched = [med for med in cleaned_unique if med not in target_78_antibiotics]
-if len(unmatched) == 0:
-    print("✨ [治理成功]：原始数组中的全部变体已完美、百分之百地锁定在你指定的 78 个标准药物集合中！")
-else:
-    print("⚠️ [审计提示]：以下药物属于数据集特有，已为你安全保留原样值：", unmatched)
-
-
-#####################
-import pandas as pd
-import numpy as np
-
-# ==========================================
-# 1. 扩充黄金标准集合（从 78 扩充至 99）
-# ==========================================
-target_99_antibiotics = set([
-    # ---- 原始 78 个药物 ----
-    'cefadroxil', 'penicillin', 'ethambutol', 'trimethoprim/sulfamethoxazole', 'tobramycin',
-    'cefepime', 'erythromycin', 'minocycline', 'ofloxacin', 'linezolid', 'clarithromycin',
-    'fosfomycin', 'isoniazid', 'cephalexin', 'amikacin', 'trimethoprim', 'ciprofloxacin',
-    'doxycycline', 'ampicillin', 'cefoxitin', 'amoxicillin/clavulanic acid', 'aztreonam',
-    'silver sulfadiazine', 'levofloxacin', 'ceftazidime', 'gatifloxacin', 'dapsone',
-    'nitrofurantoin', 'gentamicin', 'methenamine', 'cefdinir', 'rifabutin', 'meropenem',
-    'fidaxomicin', 'vancomycin', 'rifaximin', 'moxifloxacin', 'dicloxacillin', 'metronidazole',
-    'tedizolid', 'cefuroxime', 'ertapenem', 'colistin', 'rifampin', 'cefazolin', 'azithromycin',
-    'amoxicillin', 'cefpodoxime', 'ceftriaxone', 'clindamycin', 'piperacillin/tazobactam',
-    'sulfamethoxazole/trimethoprim', 'fluconazole', 'micafungin', 'ampicillin/sulbactam',
-    'cefixime', 'oxacillin', 'cefotetan', 'daptomycin', 'imipenem', 'ceftazidime/avibactam',
-    'itraconazole', 'voriconazole', 'tetracycline', 'amphotericin b', 'posaconazole',
-    'ceftaroline', 'nafcillin', 'caspofungin', 'dalbavancin', 'cefiderocol', 'tigecycline',
-    'ceftolozane/tazobactam', 'cefotaxime', 'meropenem/vaborbactam', 'eravacycline',
-    'imipenem/relebactam', 'omadacycline', 'delafloxacin',
-
-    # ---- 🚀 允许加入的 21 个 Stanford 等源特有高级药/抗真菌药 ----
-    'quinupristin/dalfopristin', 'chloramphenicol', 'piperacillin', 'cefaclor', 'flucytosine',
-    'anidulafungin', 'isavuconazole', 'terbinafine', 'clofazimine', 'pyrazinamide',
-    'cycloserine', 'ethionamide', 'aztreonam/avibactam', 'bedaquiline', 'telavancin',
-    'miconazole', 'plazomicin', 'doripenem', 'nalidixic acid', 'norfloxacin', 'polymyxin b'
-])
-
-# ==========================================
-# 2. 验证清洗结果（基于 99 个新黄金标准）
-# ==========================================
-cleaned_unique = ARMD['resistant_antibiotic_std'].dropna().unique()
-
-print("======= 💊 ARMD 抗感染药物名称归一化报告 (路线 A) =======")
-print("1. 清洗后的药物唯一值总数 (去空):", len(cleaned_unique))
-
-unmatched = [med for med in cleaned_unique if med not in target_99_antibiotics]
-if len(unmatched) == 0:
-    print("✨ [治理成功]：原始数组中的全部变体已完美、百分之百地锁定在 99 个标准抗感染药物集合中！")
-else:
-    print("⚠️ [审计提示]：以下药物属于数据集特有，已为你安全保留原样值：", unmatched)
-
-
-##########################time
-df_final=ARMD
-import pandas as pd
-from datetime import datetime
-
-# 1. 确保 mask 定义正确
-mask_mgb = df_final['source'] == 'MGB'
-# 2. 定义转换函数：将各种格式的字符串转为 Unix 秒数
-def to_seconds_robust(val):
-    if pd.isna(val):
-        return None
-    s = str(val).replace('T', ' ').replace('Z', '')[:19]
-    try:
-        # 尝试带时间的格式
-        return datetime.strptime(s, '%Y-%m-%d %H:%M:%S').timestamp()
-    except ValueError:
-        try:
-            # 尝试纯日期格式
-            return datetime.strptime(s, '%Y-%m-%d').timestamp()
-        except ValueError:
-            return None
-
-print("正在处理 MGB 极端时间...")
-# 直接对原始列 order_time_jittered 进行处理，避免 KeyError
-mgb_seconds = df_final.loc[mask_mgb, 'order_time_jittered'].apply(to_seconds_robust)
-
-# 3. 计算极值
-s_min = mgb_seconds.min()
-s_max = mgb_seconds.max()
-
-# 4. 定义目标映射范围 (2015-2024)
-target_min = datetime(2015, 1, 1).timestamp()
-target_max = datetime(2024, 12, 31).timestamp()
-
-# 5. 执行线性拉伸
-print("正在执行线性映射...")
-# 加上处理，防止除以 0（虽然在你的数据集中不太可能）
-if s_max != s_min:
-    mgb_mapped_seconds = (
-        (mgb_seconds - s_min) / (s_max - s_min) * (target_max - target_min) + target_min
-    )
-    # 6. 转回 datetime 并填回 order_time_jittered_std
-    # 这一步会自动处理 ns 范围限制，因为映射后的值都在 2015 年后
-    df_final.loc[mask_mgb, 'order_time_jittered_std'] = pd.to_datetime(mgb_mapped_seconds, unit='s')
-else:
-    # 如果 MGB 只有一个时间点，直接设为目标起始点
-    df_final.loc[mask_mgb, 'order_time_jittered_std'] = pd.Timestamp('2015-01-01')
-
-# 6. 转回 datetime 并强制舍去秒以下的小数点
-# 我们先转成 datetime，然后用 floor('s') 把纳秒、微秒全部抹平
-df_final.loc[mask_mgb, 'order_time_jittered_std'] = (
-    pd.to_datetime(mgb_mapped_seconds, unit='s')
-    .dt.floor('s')
-)
-
-# 7. 同样，对于非 MGB 的数据（Stanford, UTSW 等），也统一抹平精度
-mask_others = ~mask_mgb
-df_final.loc[mask_others, 'order_time_jittered_std'] = (
-    pd.to_datetime(df_final.loc[mask_others, 'order_time_jittered_std'], errors='coerce')
-    .dt.floor('s')
-)
-print("处理完成！")
-ARMD=df_final
-############################
-ARMD.head()
-ARMD.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/08_combined_microbiology_cultures_microbial_resistance2_resistant_antibiotic_std_organism_std.csv')
+ARMD.to_csv('08_combined_microbiology_cultures_microbial_resistance2_resistant_antibiotic_std_organism_std.csv')
 ARMD['resistant_organism_std']=ARMD['organism_std']
+
+
+
 import pandas as pd
-# 需要保存的列
 cols_to_save = [
     "anon_id",
     "pat_enc_csn_id_coded",
@@ -713,77 +199,24 @@ cols_to_save = [
     "source"
 ]
 
-# 选择列
 ARMD_subset = ARMD[cols_to_save]
-# 保存为 CSV
-ARMD_subset.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/08_combined_microbiology_cultures_microbial_resistance3.csv')
+ARMD_subset.to_csv('08_combined_microbiology_cultures_microbial_resistance3.csv')
 
 ###########################13_combined_microbiology_cultures_vitals
 import os
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2')
 import pandas as pd
 import numpy as np
-# 设置显示的最大列数，None 表示显示所有列
 pd.set_option('display.max_columns', None)
-# 设置每行显示的宽度，防止自动换行
 pd.set_option('display.width', 1000)
-ARMD=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/13_combined_microbiology_cultures_vitals.csv')
-CNSZ=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/std/07.microbiology_cultures_vitals.csv')
-#CNSZ=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/std/01_culture_cohort_std.csv')
-CNSZ2=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/01_culture_cohort_std_demographics_nursing_adi_all_rename_organism_antibiotic_demographics_ward.csv')
+ARMD=pd.read_csv('13_combined_microbiology_cultures_vitals.csv')
+CNSZ=pd.read_csv('07.microbiology_cultures_vitals.csv')
+#CNSZ=pd.read_csv('01_culture_cohort_std.csv')
+CNSZ2=pd.read_csv('01_culture_cohort_std_demographics_nursing_adi_all_rename_organism_antibiotic_demographics_ward.csv')
 ARMD.head()
 CNSZ.head()
-CNSZ = CNSZ.rename(columns={'住院号': 'anon_id'})
-CNSZ = CNSZ.rename(columns={'就诊流水号': 'pat_enc_csn_id_coded'})
-
-import numpy as np
-import pandas as pd
-
-print("=== 🚀 开始执行双主键数据底座强净化 ===")
-
-# 1. 重新读取或准备数据，并强制将双主键转换为一致的字符串格式，去除潜在空格
-CNSZ_subset = CNSZ.copy()
-cnsz2_mapping = CNSZ2[
-    [
-        "anon_id",
-        "pat_enc_csn_id_coded",
-        "order_proc_id_coded",
-        "order_time_jittered_std",
-    ]
-].drop_duplicates(subset=["anon_id", "pat_enc_csn_id_coded"])
-
-for df in [CNSZ_subset, cnsz2_mapping]:
-    df["anon_id"] = df["anon_id"].astype(str).str.strip()
-    df["pat_enc_csn_id_coded"] = (
-        df["pat_enc_csn_id_coded"].astype(str).str.strip()
-    )
-
-# 2. 预先删除左表可能残存的待填充空列，防止干扰
-CNSZ_subset = CNSZ_subset.drop(
-    columns=["order_proc_id_coded", "order_time_jittered_std"], errors="ignore"
-)
-
-# 3. 严格执行【双主键 Inner Join】，将空间锁定在“同人同次就诊”
-CNSZ_final = pd.merge(
-    CNSZ_subset,
-    cnsz2_mapping,
-    on=["anon_id", "pat_enc_csn_id_coded"],
-    how="inner",
-)
-
-# 4. 安全性双重审计
-print(f"✅ 净化融合成功！最终入组的高质量联动行数: {CNSZ_final.shape[0]} 行")
-print(f"📊 当前特征维度: {CNSZ_final.shape[1]} 列")
-
-# 验证是否还存在 _x 或 _y 的降级分裂列
-has_suffix = any("_x" in col or "_y" in col for col in CNSZ_final.columns)
-print(f"🛡️ 检查列名污染状况: {'❌ 仍有残留后缀' if has_suffix else '✨ 干净无瑕疵'}")
-
-# 5. 打印干净整洁的最终矩阵概览
-CNSZ_final.head()
 CNSZ_final['order_time_jittered']=CNSZ_final['order_time_jittered_std']
 CNSZ_final['order_time_jittered']
-CNSZ_final.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/std/07.microbiology_cultures_vitals_std.csv')
+CNSZ_final.to_csv('07.microbiology_cultures_vitals_std.csv')
 
 CNSZ=CNSZ_final
 CNSZ['source']='CNSZ'
@@ -792,7 +225,6 @@ ARMD['source'].unique()
 common_cols = [c for c in CNSZ.columns if c in ARMD.columns]
 print(f"列交集: {common_cols}")
 
-# 1. 定义需要保留的 10 个标准列
 target_columns = [
     'anon_id', 'pat_enc_csn_id_coded', 'Q25_heartrate', 'Q75_heartrate', 'median_heartrate', 'Q25_resprate',
     'Q75_resprate', 'median_resprate', 'Q25_temp', 'Q75_temp', 'median_temp', 'Q25_sysbp', 'Q75_sysbp', 'median_sysbp',
@@ -800,205 +232,26 @@ target_columns = [
     'last_temp', 'first_temp', 'last_resprate', 'first_resprate', 'last_heartrate', 'first_heartrate',
     'order_proc_id_coded', 'source'
 ]
-
-# 2. 提取 ARMD 数据（排在前面）
-# 如果你想把 ARMD 的 source 列统一改成 "ARMD"，可以加上后面那句注释
 df_armd_sub = ARMD[target_columns].copy()
-# df_armd_sub['source'] = 'ARMD'  # 如果需要强制统一来源名称，请取消本行注释
+# df_armd_sub['source'] = 'ARMD' 
 
-# 3. 提取 CNSZ 数据（排在后面）
 df_cnsz_sub = CNSZ[target_columns].copy()
 
-# 4. 纵向合并：ARMD 在前，CNSZ 在后
-# ignore_index=True 可以确保重新生成从 0 到 1200+ 万的干净连续行索引
 merged_df = pd.concat([df_armd_sub, df_cnsz_sub], ignore_index=True)
-
-# 5. 验证结果
-print(f"合并后的数据集形状 (Shape): {merged_df.shape}")
-print("\n数据前 3 行 (应全为 ARMD 数据):")
-print(merged_df.head(3))
-print("\n数据后 3 行 (应全为 CNSZ 数据):")
-print(merged_df.tail(3))
 
 merged_df.to_csv('./merge3/13_combined_microbiology_cultures_vitals3.csv')
 
 #############################14_combined_microbiology_cultures_prior_infecting_organism2.csv
 import os
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2')
 import pandas as pd
 import numpy as np
-# 设置显示的最大列数，None 表示显示所有列
 pd.set_option('display.max_columns', None)
-# 设置每行显示的宽度，防止自动换行
 pd.set_option('display.width', 1000)
-ARMD=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/14_combined_microbiology_cultures_prior_infecting_organism2.csv')
-CNSZ=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/std/07.microbiology_cultures_vitals.csv')
-#CNSZ=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/std/01_culture_cohort_std.csv')
-CNSZ2=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/01_culture_cohort_std_demographics_nursing_adi_all_rename_organism_antibiotic_demographics_ward.csv')
+ARMD=pd.read_csv('14_combined_microbiology_cultures_prior_infecting_organism2.csv')
+CNSZ=pd.read_csv('07.microbiology_cultures_vitals.csv')
 ARMD.head()
 CNSZ.head()
 ARMD['prior_organism'].unique()
-
-import pandas as pd
-import numpy as np
-
-# 1. 预清洗：一律转为小写并去除两端空格
-ARMD['prior_org_clean'] = ARMD['prior_organism'].astype(str).str.strip().str.lower()
-
-# 2. 核心映射字典（全量对齐国际标准物种名与临床术语）
-prior_mapping = {
-    # 纯属级上报对齐
-    "acinetobacter": "acinetobacter",
-    "providencia": "providencia",
-    "morganella": "morganella",
-    "stenotrophomonas": "stenotrophomonas",
-    "streptococcus": "streptococcus",
-    "serratia": "serratia",
-    "citrobacter": "citrobacter",
-    "enterobacter": "enterobacter",
-    "pseudomonas": "pseudomonas",
-    "enterococcus": "enterococcus",
-    "proteus": "proteus",
-    "klebsiella": "klebsiella",
-    "staphylococcus": "staphylococcus",
-    "escherichia": "escherichia",
-    "candida": "candida",
-
-    # 临床特有缩写规范化
-    "cons": "coagulase-negative staphylococcus",  # 凝固酶阴性葡萄球菌
-
-    # 种级与复合群全量标准化（剥离大小写）
-    "staphylococcus aureus": "staphylococcus aureus",
-    "enterococcus faecalis": "enterococcus faecalis",
-    "serratia marcescens": "serratia marcescens",
-    "escherichia coli": "escherichia coli",
-    "enterococcus faecium": "enterococcus faecium",
-    "klebsiella pneumoniae": "klebsiella pneumoniae",
-    "enterobacter cloacae complex": "enterobacter cloacae complex",
-    "klebsiella oxytoca": "klebsiella oxytoca",
-    "pseudomonas aeruginosa": "pseudomonas aeruginosa",
-    "acinetobacter baumannii complex": "acinetobacter baumannii complex",
-    "proteus mirabilis": "proteus mirabilis",
-    "streptococcus mitis/oralis group": "streptococcus mitis/oralis group",
-    "stenotrophomonas maltophilia": "stenotrophomonas maltophilia",
-    "klebsiella aerogenes": "klebsiella aerogenes",
-    "citrobacter freundii complex": "citrobacter freundii complex",
-    "clostridium difficile": "clostridioides difficile",  # 顺手更新为国际最新属名
-    "morganella morganii": "morganella morganii",
-    "proteus vulgaris": "proteus vulgaris",
-    "streptococcus pneumoniae": "streptococcus pneumoniae",
-
-    # 剔除临床异名与表型修饰词
-    "citrobacter koseri (diversus)": "citrobacter koseri",  # 剥离旧称 diversus
-    "pseudomonas aeruginosa (mucoid)": "pseudomonas aeruginosa",  # 剥离粘液型表型
-
-    # 剔除带有 species 的属级模糊报告
-    "shigella species": "shigella",
-    "salmonella species": "salmonella",
-    "providencia species": "providencia",
-    "burkholderia species": "burkholderia",
-    "candida species": "candida",
-
-    # 真菌（念珠菌属）全量标准化
-    "candida glabrata": "candida glabrata",
-    "candida dubliniensis": "candida dubliniensis",
-    "candida tropicalis": "candida tropicalis",
-    "candida parapsilosis": "candida parapsilosis",
-    "candida guilliermondii": "meyerzyma guilliermondii",  # 现代分类学更迭，保留或统称亦可
-    "candida krusei": "candida krusei",
-    "candida lusitaniae": "candida lusitaniae",
-    "candida auris": "candida auris",  # 超级真菌耳念珠菌
-    "candida haemulonii": "candida haemulonii",
-
-    # 系统级空值防御
-    "nan": None, "null": None, "": None
-}
-
-# 3. 生成特别列一：标准物种名（最高临床分辨率）
-ARMD['prior_org_std'] = ARMD['prior_org_clean'].map(prior_mapping)
-
-
-# 4. 生成特别列二：纯粹的属级标签（用于防止特征稀疏的强效降维列）
-def extract_genus(org_str):
-    if pd.isna(org_str):
-        return np.nan
-    # 处理特殊缩写 CONS
-    if org_str == "coagulase-negative staphylococcus":
-        return "staphylococcus"
-    # 取空格切分的第一顺位词，即为细菌/真菌的标准属名
-    return org_str.split(' ')[0]
-
-
-ARMD['prior_org_genus'] = ARMD['prior_org_std'].apply(extract_genus)
-
-# 5. 验证是否还有任何未匹配
-unmatched = ARMD.loc[ARMD['prior_org_std'].isna() & ARMD['prior_org_clean'].notna() & (
-            ARMD['prior_org_clean'] != 'nan'), 'prior_org_clean'].unique()
-print(f"🎉 既往菌名清洗验证 —— 文本未匹配残余数: {len(unmatched)} 类")
-
-##########################time
-df_final=ARMD
-import pandas as pd
-from datetime import datetime
-
-# 1. 确保 mask 定义正确
-mask_mgb = df_final['source'] == 'MGB'
-# 2. 定义转换函数：将各种格式的字符串转为 Unix 秒数
-def to_seconds_robust(val):
-    if pd.isna(val):
-        return None
-    s = str(val).replace('T', ' ').replace('Z', '')[:19]
-    try:
-        # 尝试带时间的格式
-        return datetime.strptime(s, '%Y-%m-%d %H:%M:%S').timestamp()
-    except ValueError:
-        try:
-            # 尝试纯日期格式
-            return datetime.strptime(s, '%Y-%m-%d').timestamp()
-        except ValueError:
-            return None
-
-print("正在处理 MGB 极端时间...")
-# 直接对原始列 order_time_jittered 进行处理，避免 KeyError
-mgb_seconds = df_final.loc[mask_mgb, 'order_time_jittered'].apply(to_seconds_robust)
-
-# 3. 计算极值
-s_min = mgb_seconds.min()
-s_max = mgb_seconds.max()
-
-# 4. 定义目标映射范围 (2015-2024)
-target_min = datetime(2015, 1, 1).timestamp()
-target_max = datetime(2024, 12, 31).timestamp()
-
-# 5. 执行线性拉伸
-print("正在执行线性映射...")
-# 加上处理，防止除以 0（虽然在你的数据集中不太可能）
-if s_max != s_min:
-    mgb_mapped_seconds = (
-        (mgb_seconds - s_min) / (s_max - s_min) * (target_max - target_min) + target_min
-    )
-    # 6. 转回 datetime 并填回 order_time_jittered_std
-    # 这一步会自动处理 ns 范围限制，因为映射后的值都在 2015 年后
-    df_final.loc[mask_mgb, 'order_time_jittered_std'] = pd.to_datetime(mgb_mapped_seconds, unit='s')
-else:
-    # 如果 MGB 只有一个时间点，直接设为目标起始点
-    df_final.loc[mask_mgb, 'order_time_jittered_std'] = pd.Timestamp('2015-01-01')
-
-# 6. 转回 datetime 并强制舍去秒以下的小数点
-# 我们先转成 datetime，然后用 floor('s') 把纳秒、微秒全部抹平
-df_final.loc[mask_mgb, 'order_time_jittered_std'] = (
-    pd.to_datetime(mgb_mapped_seconds, unit='s')
-    .dt.floor('s')
-)
-
-# 7. 同样，对于非 MGB 的数据（Stanford, UTSW 等），也统一抹平精度
-mask_others = ~mask_mgb
-df_final.loc[mask_others, 'order_time_jittered_std'] = (
-    pd.to_datetime(df_final.loc[mask_others, 'order_time_jittered_std'], errors='coerce')
-    .dt.floor('s')
-)
-print("处理完成！")
-ARMD=df_final
 ARMD.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/14_combined_microbiology_cultures_prior_infecting_organism2_std.csv')
 ARMD.head()
 cols_to_keep = [
@@ -1012,16 +265,13 @@ cols_to_keep = [
     "source",
 ]
 ARMD_subset = ARMD[cols_to_keep]
-ARMD_subset.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/14_combined_microbiology_cultures_prior_infecting_organism3.csv')
-########################################################################
-##############################整合所有表############################################################################
+ARMD_subset.to_csv('14_combined_microbiology_cultures_prior_infecting_organism3.csv')
+
+##############################all############################################################################
 import os
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3')
 import pandas as pd
 import polars as pl
 
-# --- 第一步：加载主表 (Cohort) ---
-# 它是所有关联的基准，行数必须严格锁定
 cohort = pl.read_csv("01_combined_culture_cohort3.csv")
 cohort = pl.read_csv(
     "01_combined_culture_cohort3.csv",
@@ -1030,12 +280,9 @@ cohort = pl.read_csv(
     }
 )
 original_count = cohort.height
-print(f"主表原始行数: {original_count}")
 
-# 核心关联键
 keys = ["anon_id", "pat_enc_csn_id_coded", "order_proc_id_coded"]
 
-# --- 第二步：合并 Demographics ---
 demo = pl.read_csv("06_combined_microbiology_cultures_demographics3.csv", schema_overrides={"order_proc_id_coded": pl.Utf8})
 # 检查 demo 表是否有重复键，防止合并后行数爆炸
 if demo.select(keys).is_duplicated().any():
@@ -1179,20 +426,6 @@ if prior_med.select(keys).is_duplicated().any():
 duplicates = prior_med.filter(prior_med.select(keys).is_duplicated()).sort(keys)
 print(duplicates.head(10))
 
-# 观察列名 prior_org_days_to_culture 和 prior_org_specific，这张表记录的是：在当前这次细菌培养之前，该患者过去还检出过什么菌。
-#
-# 重复的原因：一个人在本次感染之前，可能在过去 3 年内有过 5 次不同的感染记录（比如 1951 年一次大肠杆菌，1952 年又一次）。所以同一个 order_proc_id_coded 会对应多行历史记录。
-#
-# 临床价值：这是预测耐药性的“核武器”。如果患者 3 个月前感染过“耐药铜绿假单胞菌”，那么他今天这次感染大概率还是同一种菌或具有类似的耐药谱。
-
-# 处理策略：从“序列”到“特征”
-# 我们不能把这些历史记录直接 Join 进去（会导致行数爆炸），必须把它们扁平化（Flatten）。我们需要构建几个关键特征：
-# 最近一次感染距今多久（取 prior_org_days_to_culture 的最小值）。
-# 过去是否感染过某种特定高危菌（如 MRSA, VRE, 或大肠杆菌）。
-# 历史感染的总次数。
-
-# 1. 预处理：转换天数为数值
-# 1. 聚合逻辑（DataFrame 模式直接运行）
 prior_bugs_wide = (
     prior_med
     .filter(pl.col("medication_name").is_not_null())
@@ -1221,8 +454,6 @@ prior_bugs_wide = (
 #     .fill_null(0)
 # )
 
-# 2. 批量加前缀（使用表达式更优雅，避免手动数索引）
-# 我们排除 keys 列表中的列，给剩下的列（菌种名）加上 hist_bug_ 前缀
 prior_bugs_wide = prior_bugs_wide.with_columns([
     pl.col(c).alias(f"prior_med_{c}")
     for c in prior_bugs_wide.columns if c not in keys
@@ -1241,8 +472,6 @@ master_v4 = master_v3.join(
     how="left"
 )
 
-# 填充合并后的缺失值
-# 历史上没出现过的菌，统计值自然应该是 0
 master_v4 = master_v4.with_columns([
     pl.col("^prior_med_.*$").fill_null(0)
 ])
@@ -1373,11 +602,6 @@ abx_final_cleaned = abx_features_cleaned.rename({
 
 print(f"最终抗生素特征表行数: {abx_final_cleaned.height}")
 
-# 合并时，我们面临一个关键决策：如何填充缺失值？
-#
-# abx_exp_any_XXX (布尔列)：如果缺失，说明从未用过，填 0。
-#
-# abx_exp_XXX (天数列)：如果缺失，说明距离“无穷远”。在机器学习中，填一个比数据集最大跨度还大的常数（比如 3650 天，即 10 年）通常比填 0 更合理，因为 0 代表“正在使用”。
 
 # 合并入主表
 master_v6 = master_v5.join(abx_final_cleaned, on=keys, how="left")
@@ -2255,7 +1479,4 @@ df_ast_unique = final_df[ast_meta_cols].drop_duplicates(
 # 3. 此时再与 rt4 进行关联
 # 场景 A：如果只做样本级别的临床背景关联（保留 rt4 所有基因行）
 rt4_merged_clinical = pd.merge(rt4, df_ast_unique, on="BioSample_ID", how="left")
-
-print(f"去重后的药敏表型参考行数: {df_ast_unique.shape[0]}")
-print(f"临床背景关联后的基因表行数: {rt4_merged_clinical.shape[0]}")
-rt4_merged_clinical.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/测序菌株_SIR_gene.csv')
+rt4_merged_clinical.to_csv('SIR_gene.csv')
