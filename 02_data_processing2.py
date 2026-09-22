@@ -8,8 +8,6 @@ ARMD=pd.read_csv('./11_combined_microbiology_cultures_prior_procedures2.csv')
 CNSZ=pd.read_excel('./12.microbiology_cultures_priorprocedures.xlsx')
 ARMD.head()
 CNSZ.head()
-CNSZ = CNSZ.rename(columns={'住院号': 'anon_id'})
-CNSZ = CNSZ.rename(columns={'就诊流水号': 'pat_enc_csn_id_coded'})
 CNSZ["order_time_jittered"] = CNSZ["order_time_jittered_std"]
 CNSZ["source"] = "CNSZ"
 CNSZ.to_csv('./12.microbiology_cultures_priorprocedures_std.csv')
