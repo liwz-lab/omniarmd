@@ -8,64 +8,6 @@ pd.set_option('display.width', 1000)
 df = pd.read_csv('./merge3/12_combined_microbiology_cultures_ward_info3.csv')
 df.head()
 df['order_time_jittered_std'].unique()
-
-
-import pandas as pd
-from datetime import datetime
-
-import pandas as pd
-from datetime import datetime
-
-df_final = df
-# 2. 定义两边群体的掩码
-mask_mgb = df_final['source'] == 'MGB'
-mask_others = ~mask_mgb
-
-# ==================== 核心步骤 1: 全局无时区初始化 ====================
-print("正在初始化全局无时区标准时间轴...")
-# 一步到位：转换全量原始时间、强行剥离所有潜在时区 (+00:00)、抹平秒以下精度
-df_final['order_time_jittered_std'] = (
-    pd.to_datetime(df_final['order_time_jittered'], errors='coerce')
-    .dt.tz_localize(None)  # 核心修复：将 Stanford 等带时区的数据彻底洗成 tz-naive
-    .dt.floor('s')
-)
-
-# ==================== 核心步骤 2: 仅针对 MGB 极端时间进行线性拉伸 ====================
-print("正在处理 MGB 极端时间拉伸...")
-def to_seconds_robust(val):
-    if pd.isna(val):
-        return None
-    s = str(val).replace('T', ' ').replace('Z', '')[:19]
-    try:
-        return datetime.strptime(s, '%Y-%m-%d %H:%M:%S').timestamp()
-    except ValueError:
-        try:
-            return datetime.strptime(s, '%Y-%m-%d').timestamp()
-        except ValueError:
-            return None
-
-# 仅抓取 MGB 部分计算 Unix 秒数
-mgb_seconds = df_final.loc[mask_mgb, 'order_time_jittered'].apply(to_seconds_robust)
-s_min = mgb_seconds.min()
-s_max = mgb_seconds.max()
-
-# 定义映射目标范围 (2015-2024)
-target_min = datetime(2015, 1, 1).timestamp()
-target_max = datetime(2024, 12, 31).timestamp()
-
-print("正在执行 MGB 线性映射与覆盖...")
-if s_max != s_min:
-    mgb_mapped_seconds = (mgb_seconds - s_min) / (s_max - s_min) * (target_max - target_min) + target_min
-    # 填回 MGB 槽位（此时两边都是纯粹的 datetime64[ns]，完美兼容，绝不报警）
-    df_final.loc[mask_mgb, 'order_time_jittered_std'] = (
-        pd.to_datetime(mgb_mapped_seconds, unit='s')
-        .dt.floor('s')
-    )
-else:
-    df_final.loc[mask_mgb, 'order_time_jittered_std'] = pd.Timestamp('2015-01-01')
-
-print("✨ [Omni-ARMD] 多中心时间戳终极无缝对齐完成！")
-
 ARMD=df_final
 ARMD.to_csv('./merge3/12_combined_microbiology_cultures_ward_info3.csv')
 
