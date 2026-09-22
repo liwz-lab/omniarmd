@@ -5,7 +5,7 @@ import pandas as pd
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 1000)
 df = pd.read_csv('./01_combined_culture_cohort2.csv')
-map_df = pd.read_csv('./clean/organism_rename.csv')
+map_df = pd.read_csv('./clean/organism_mapping.csv')
 print(map_df.head())
 
 mapping_dict = dict(zip(
@@ -29,7 +29,7 @@ df.loc[
 df['organism_std'].unique().tolist()
 
 ##########drug mapping
-map_dr = pd.read_csv('./clean/')
+map_dr = pd.read_csv('./clean/antimicrobial_mapping.csv')
 print(map_dr.head())
 
 mapping_dict = dict(zip(
@@ -77,7 +77,7 @@ mapping = {
     'Susceptible': 'S',
     'Resistant': 'R',
     'Intermediate': 'I',
-    'Susceptible dose-dependent': 'I',   # CLSI规则
+    'Susceptible dose-dependent': 'I',   
     'Non-susceptible': 'R',
     'Inconclusive': 'nan',  #NA
     'Null': 'nan',
@@ -148,6 +148,7 @@ df_final = df_wide.merge(
     on=['anon_id', 'pat_enc_csn_id_coded', 'order_proc_id_coded', 'order_time_jittered', 'organism_std'],
     how='left'
 )
+df_final['antimicrobial_std']=df_final['antibiotic_std']
 df_final.to_csv('./01_combined_culture_cohort2_std_clean_time_wide.csv', index=False)
 
 
