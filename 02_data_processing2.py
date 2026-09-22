@@ -1,200 +1,19 @@
-import os
-import pandas as pd
-# 设置显示的最大列数，None 表示显示所有列
-pd.set_option('display.max_columns', None)
-# 设置每行显示的宽度，防止自动换行
-pd.set_option('display.width', 1000)
-
-df = pd.read_csv('./merge3/12_combined_microbiology_cultures_ward_info3.csv')
-df.head()
-df['order_time_jittered_std'].unique()
-ARMD=df_final
-ARMD.to_csv('./merge3/12_combined_microbiology_cultures_ward_info3.csv')
-
-#########################################
 #################################microbiology_cultures_priorprocedures
 import os
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2')
-
 import pandas as pd
 import numpy as np
-# 设置显示的最大列数，None 表示显示所有列
 pd.set_option('display.max_columns', None)
-# 设置每行显示的宽度，防止自动换行
 pd.set_option('display.width', 1000)
 ARMD=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/11_combined_microbiology_cultures_prior_procedures2.csv')
-CNSZ=pd.read_excel('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/12.microbiology_cultures_priorprocedures.xlsx')
-CNSZ2=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/01_culture_cohort_std_demographics_nursing_adi_all_rename_organism_antibiotic_demographics_ward.csv')
+CNSZ=pd.read_excel('./12.microbiology_cultures_priorprocedures.xlsx')
+CNSZ2=pd.read_csv('./01_culture_cohort_std_demographics_nursing_adi_all_rename_organism_antibiotic_demographics_ward.csv')
 ARMD.head()
 CNSZ.head()
 CNSZ = CNSZ.rename(columns={'住院号': 'anon_id'})
 CNSZ = CNSZ.rename(columns={'就诊流水号': 'pat_enc_csn_id_coded'})
-
-
-import pandas as pd
-
-# 1. 提取 CNSZ2 中用于映射的列，并基于 anon_id 进行去重，防止合并时行数爆炸
-#    这里使用 drop_duplicates 保证每个 anon_id 只有唯一的一行映射特征
-import pandas as pd
-
-# 1. 提取 CNSZ2 的映射列，并基于【双主键】进行去重，确保每次就诊只有唯一的一行特征
-cnsz2_mapping = CNSZ2[
-    [
-        "anon_id",
-        "pat_enc_csn_id_coded",
-        "order_proc_id_coded",
-        "order_time_jittered_std",
-    ]
-].drop_duplicates(subset=["anon_id", "pat_enc_csn_id_coded"])
-
-# 2. 预先删除 CNSZ 原表中全是 NaN 的待填充列，防止 merge 后产生 _x, _y 后缀
-CNSZ_subset = CNSZ.drop(
-    columns=["order_proc_id_coded", "order_time_jittered_std"], errors="ignore"
-)
-
-# 3. 使用 inner join (how='inner') 一键完成：双主键求交集 + 提取交集行 + 增加新列
-#    Pandas 会自动匹配 on 列表中所有字段都相同的行
-CNSZ_cleaned = pd.merge(
-    CNSZ_subset,
-    cnsz2_mapping,
-    on=["anon_id", "pat_enc_csn_id_coded"],
-    how="inner",
-)
-
-# 4. 打印对齐审计报告
-print("=== 🔗 CNSZ 双主键（患者+就诊）对齐体检报告 ===")
-print(f"临检/药敏表 (CNSZ2) 去重后的独立就诊次: {cnsz2_mapping.shape[0]} 次")
-print(f"成功求交集并保留下来的医嘱行数: {CNSZ_cleaned.shape[0]} 行")
-print(
-    f"当前共有患者数: {CNSZ_cleaned['anon_id'].nunique()} 人，总就诊数: {CNSZ_cleaned['pat_enc_csn_id_coded'].nunique()} 次"
-)
-
-# 5. 查看合流后的前几行数据
-CNSZ_cleaned.head()
-
-# 2. 求两个表的 anon_id 交集
-shared_anon_ids = set(CNSZ["anon_id"]).intersection(set(cnsz2_mapping["anon_id"]))
-print(f"🧬 发现双中心交集患者 (anon_id) 数量: {len(shared_anon_ids)} 人")
-
-# 3. 提取 CNSZ 中属于交集患者的行
-CNSZ_intersected = CNSZ[CNSZ["anon_id"].isin(shared_anon_ids)].copy()
-
-# 4. 在安全提取的交集子集上，先把原本全是 NaN 的旧列删掉，避免产生 _x, _y 后缀
-CNSZ_intersected = CNSZ_intersected.drop(
-    columns=["order_proc_id_coded", "order_time_jittered_std"], errors="ignore"
-)
-
-# 5. 通过 left join 将 CNSZ2 的关键列一键精准拼回 CNSZ
-CNSZ_cleaned = pd.merge(
-    CNSZ_intersected, cnsz2_mapping, on="anon_id", how="left"
-)
-
-print(
-    f"✨ 联动合并成功！交集医嘱行数: {CNSZ_cleaned.shape[0]} 行，当前特征列数: {CNSZ_cleaned.shape[1]}"
-)
-
-# 6. 查看更新后的前 5 行
-import numpy as np
-
-# 1. 确保 _x 和 _y 两个就诊 ID 完全一致（安全性审计）
-# 如果两列有微小类型差异，统一转成 float/int 再对比
-mismatches = (
-    CNSZ_cleaned["pat_enc_csn_id_coded_x"].astype(str)
-    != CNSZ_cleaned["pat_enc_csn_id_coded_y"].astype(str)
-).sum()
-print(f"⚠️ 检查双主键错配行数: {mismatches} 行 (应当为 0)")
-
-# 2. 保留 _x 作为标准的就诊ID，并移除 _y 冗余列
-CNSZ_cleaned["pat_enc_csn_id_coded"] = CNSZ_cleaned["pat_enc_csn_id_coded_x"]
-CNSZ_cleaned = CNSZ_cleaned.drop(
-    columns=["pat_enc_csn_id_coded_x", "pat_enc_csn_id_coded_y"],
-    errors="ignore",
-)
-
-# 3. 将新填充的临床检验时间计算为正式的时距特征 (Time-to-Culture)
-# 将字符时间转换为 datetime 格式
-CNSZ_cleaned["手术日期"] = pd.to_datetime(CNSZ_cleaned["手术日期"])
-CNSZ_cleaned["order_time_jittered_std"] = pd.to_datetime(
-    CNSZ_cleaned["order_time_jittered_std"]
-)
-
-# 计算医嘱开药时间与送检培养时间之间的差值（天数）
-# 这是一个极其核心的耐药性时间窗口特征！
-CNSZ_cleaned["procedure_time_to_culturetime"] = (
-    CNSZ_cleaned["order_time_jittered_std"] - CNSZ_cleaned["手术日期"]
-).dt.total_seconds() / 86400.0
-
-print(
-    f"✨ 列清洗与时间窗特征工程完成！当前独立特征数: {CNSZ_cleaned.shape[1]} 列"
-)
-
-# 4. 再次查看干净的 head()
-CNSZ_cleaned.head()
-
-CNSZ_cleaned.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/12.microbiology_cultures_priorprocedures_std.csv')
-CNSZ=CNSZ_cleaned
-#CNSZ["order_proc_id_coded"] = np.nan
 CNSZ["order_time_jittered"] = CNSZ["order_time_jittered_std"]
 CNSZ["source"] = "CNSZ"
 CNSZ.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/12.microbiology_cultures_priorprocedures_std.csv')
-################time
-import pandas as pd
-from datetime import datetime
-
-df_final = ARMD
-# 2. 定义两边群体的掩码
-mask_mgb = df_final['source'] == 'MGB'
-mask_others = ~mask_mgb
-
-# ==================== 核心步骤 1: 全局无时区初始化 ====================
-print("正在初始化全局无时区标准时间轴...")
-# 一步到位：转换全量原始时间、强行剥离所有潜在时区 (+00:00)、抹平秒以下精度
-df_final['order_time_jittered_std'] = (
-    pd.to_datetime(df_final['order_time_jittered'], errors='coerce')
-    .dt.tz_localize(None)  # 核心修复：将 Stanford 等带时区的数据彻底洗成 tz-naive
-    .dt.floor('s')
-)
-
-# ==================== 核心步骤 2: 仅针对 MGB 极端时间进行线性拉伸 ====================
-print("正在处理 MGB 极端时间拉伸...")
-def to_seconds_robust(val):
-    if pd.isna(val):
-        return None
-    s = str(val).replace('T', ' ').replace('Z', '')[:19]
-    try:
-        return datetime.strptime(s, '%Y-%m-%d %H:%M:%S').timestamp()
-    except ValueError:
-        try:
-            return datetime.strptime(s, '%Y-%m-%d').timestamp()
-        except ValueError:
-            return None
-
-# 仅抓取 MGB 部分计算 Unix 秒数
-mgb_seconds = df_final.loc[mask_mgb, 'order_time_jittered'].apply(to_seconds_robust)
-s_min = mgb_seconds.min()
-s_max = mgb_seconds.max()
-
-# 定义映射目标范围 (2015-2024)
-target_min = datetime(2015, 1, 1).timestamp()
-target_max = datetime(2024, 12, 31).timestamp()
-
-print("正在执行 MGB 线性映射与覆盖...")
-if s_max != s_min:
-    mgb_mapped_seconds = (mgb_seconds - s_min) / (s_max - s_min) * (target_max - target_min) + target_min
-    # 填回 MGB 槽位（此时两边都是纯粹的 datetime64[ns]，完美兼容，绝不报警）
-    df_final.loc[mask_mgb, 'order_time_jittered_std'] = (
-        pd.to_datetime(mgb_mapped_seconds, unit='s')
-        .dt.floor('s')
-    )
-else:
-    df_final.loc[mask_mgb, 'order_time_jittered_std'] = pd.Timestamp('2015-01-01')
-
-print("✨ [Omni-ARMD] 多中心时间戳终极无缝对齐完成！")
-
-ARMD=df_final
-ARMD.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/11_combined_microbiology_cultures_prior_procedures2_time_std.csv')
-
-# 1. 定义需要保留的 10 个标准列
 target_columns = [
     "anon_id",
     "pat_enc_csn_id_coded",
@@ -205,57 +24,24 @@ target_columns = [
     'procedure_time_to_culturetime',
     "source",
 ]
-
-# 2. 提取 ARMD 数据（排在前面）
-# 如果你想把 ARMD 的 source 列统一改成 "ARMD"，可以加上后面那句注释
 df_armd_sub = ARMD[target_columns].copy()
-# df_armd_sub['source'] = 'ARMD'  # 如果需要强制统一来源名称，请取消本行注释
-
-# 3. 提取 CNSZ 数据（排在后面）
+# df_armd_sub['source'] = 'ARMD'
 df_cnsz_sub = CNSZ[target_columns].copy()
-
-# 4. 纵向合并：ARMD 在前，CNSZ 在后
-# ignore_index=True 可以确保重新生成从 0 到 1200+ 万的干净连续行索引
 merged_df = pd.concat([df_armd_sub, df_cnsz_sub], ignore_index=True)
-
-# 5. 验证结果
-print(f"合并后的数据集形状 (Shape): {merged_df.shape}")
-print("\n数据前 3 行 (应全为 ARMD 数据):")
-print(merged_df.head(3))
-print("\n数据后 3 行 (应全为 CNSZ 数据):")
-print(merged_df.tail(3))
-
 merged_df.to_csv('./merge3/11_combined_microbiology_cultures_prior_procedures3.csv')
-
 
 #########################03_combined_microbiology_cultures_antibiotic_class_exposure2
 import os
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2')
-
 import pandas as pd
 import numpy as np
-# 设置显示的最大列数，None 表示显示所有列
 pd.set_option('display.max_columns', None)
-# 设置每行显示的宽度，防止自动换行
 pd.set_option('display.width', 1000)
-ARMD=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/03_combined_microbiology_cultures_antibiotic_class_exposure2.csv')
-CNSZ1=pd.read_excel('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/细菌or真菌（阳性+阴性）抗生素用药史-入院前30天2024.xlsx')
-CNSZ=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/std/03.microbiology_cultures_prior_med_std.csv')
-CNSZ2=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/01_culture_cohort_std_demographics_nursing_adi_all_rename_organism_antibiotic_demographics_ward.csv')
-ARMD.head()
-CNSZ1.head()
-CNSZ.head()
-CNSZ['医嘱时间'] = CNSZ1['医嘱时间']
+ARMD=pd.read_csv('./03_combined_microbiology_cultures_antibiotic_class_exposure2.csv')
+CNSZ=pd.read_csv('./03.microbiology_cultures_prior_med_std.csv')
 CNSZ['pat_enc_csn_id_coded'].unique()
-CNSZ.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/std/03.microbiology_cultures_prior_med_std_time.csv')
-import pandas as pd
+CNSZ.to_csv('./03.microbiology_cultures_prior_med_std_time.csv')
 
-# 1. 提取 CNSZ2 中用于映射的列，并基于 anon_id 进行去重，防止合并时行数爆炸
-#    这里使用 drop_duplicates 保证每个 anon_id 只有唯一的一行映射特征
-import pandas as pd
-
-# 1. 提取 CNSZ2 的映射列，并基于【双主键】进行去重，确保每次就诊只有唯一的一行特征
-cnsz2_mapping = CNSZ2[
+cnsz_mapping = CNSZ[
     [
         "anon_id",
         "pat_enc_csn_id_coded",
@@ -264,165 +50,50 @@ cnsz2_mapping = CNSZ2[
     ]
 ].drop_duplicates(subset=["anon_id", "pat_enc_csn_id_coded"])
 
-# 2. 预先删除 CNSZ 原表中全是 NaN 的待填充列，防止 merge 后产生 _x, _y 后缀
 CNSZ_subset = CNSZ.drop(
     columns=["order_proc_id_coded", "order_time_jittered_std"], errors="ignore"
 )
 
-# 3. 使用 inner join (how='inner') 一键完成：双主键求交集 + 提取交集行 + 增加新列
-#    Pandas 会自动匹配 on 列表中所有字段都相同的行
 CNSZ_cleaned = pd.merge(
     CNSZ_subset,
-    cnsz2_mapping,
+    cnsz_mapping,
     on=["anon_id", "pat_enc_csn_id_coded"],
     how="inner",
 )
 
-# 4. 打印对齐审计报告
-print("=== 🔗 CNSZ 双主键（患者+就诊）对齐体检报告 ===")
-print(f"临检/药敏表 (CNSZ2) 去重后的独立就诊次: {cnsz2_mapping.shape[0]} 次")
-print(f"成功求交集并保留下来的医嘱行数: {CNSZ_cleaned.shape[0]} 行")
-print(
-    f"当前共有患者数: {CNSZ_cleaned['anon_id'].nunique()} 人，总就诊数: {CNSZ_cleaned['pat_enc_csn_id_coded'].nunique()} 次"
-)
-
-# 5. 查看合流后的前几行数据
 CNSZ_cleaned.head()
 
-# 2. 求两个表的 anon_id 交集
-shared_anon_ids = set(CNSZ["anon_id"]).intersection(set(cnsz2_mapping["anon_id"]))
-print(f"🧬 发现双中心交集患者 (anon_id) 数量: {len(shared_anon_ids)} 人")
-
-# 3. 提取 CNSZ 中属于交集患者的行
+shared_anon_ids = set(CNSZ["anon_id"]).intersection(set(cnsz_mapping["anon_id"]))
 CNSZ_intersected = CNSZ[CNSZ["anon_id"].isin(shared_anon_ids)].copy()
-
-# 4. 在安全提取的交集子集上，先把原本全是 NaN 的旧列删掉，避免产生 _x, _y 后缀
 CNSZ_intersected = CNSZ_intersected.drop(
     columns=["order_proc_id_coded", "order_time_jittered_std"], errors="ignore"
 )
-
-# 5. 通过 left join 将 CNSZ2 的关键列一键精准拼回 CNSZ
 CNSZ_cleaned = pd.merge(
-    CNSZ_intersected, cnsz2_mapping, on="anon_id", how="left"
+    CNSZ_intersected, cnsz_mapping, on="anon_id", how="left"
 )
 
-print(
-    f"✨ 联动合并成功！交集医嘱行数: {CNSZ_cleaned.shape[0]} 行，当前特征列数: {CNSZ_cleaned.shape[1]}"
-)
-
-# 6. 查看更新后的前 5 行
-import numpy as np
-
-# 1. 确保 _x 和 _y 两个就诊 ID 完全一致（安全性审计）
-# 如果两列有微小类型差异，统一转成 float/int 再对比
 mismatches = (
     CNSZ_cleaned["pat_enc_csn_id_coded_x"].astype(str)
     != CNSZ_cleaned["pat_enc_csn_id_coded_y"].astype(str)
 ).sum()
-print(f"⚠️ 检查双主键错配行数: {mismatches} 行 (应当为 0)")
 
-# 2. 保留 _x 作为标准的就诊ID，并移除 _y 冗余列
 CNSZ_cleaned["pat_enc_csn_id_coded"] = CNSZ_cleaned["pat_enc_csn_id_coded_x"]
 CNSZ_cleaned = CNSZ_cleaned.drop(
     columns=["pat_enc_csn_id_coded_x", "pat_enc_csn_id_coded_y"],
     errors="ignore",
 )
 
-# 3. 将新填充的临床检验时间计算为正式的时距特征 (Time-to-Culture)
-# 将字符时间转换为 datetime 格式
-CNSZ_cleaned["医嘱时间"] = pd.to_datetime(CNSZ_cleaned["医嘱时间"])
 CNSZ_cleaned["order_time_jittered_std"] = pd.to_datetime(
     CNSZ_cleaned["order_time_jittered_std"]
 )
 
-# 计算医嘱开药时间与送检培养时间之间的差值（天数）
-# 这是一个极其核心的耐药性时间窗口特征！
 CNSZ_cleaned["medication_time_to_culturetime"] = (
     CNSZ_cleaned["order_time_jittered_std"] - CNSZ_cleaned["医嘱时间"]
 ).dt.total_seconds() / 86400.0
 
-print(
-    f"✨ 列清洗与时间窗特征工程完成！当前独立特征数: {CNSZ_cleaned.shape[1]} 列"
-)
 
-# 4. 再次查看干净的 head()
 CNSZ_cleaned.head()
-
-CNSZ_cleaned.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/03.microbiology_cultures_prior_med_std_time_anon.csv')
-CNSZ=CNSZ_cleaned
-
-
-################time
-import pandas as pd
-from datetime import datetime
-
-df_final = ARMD
-# 2. 定义两边群体的掩码
-mask_mgb = df_final['source'] == 'MGB'
-mask_others = ~mask_mgb
-
-# ==================== 核心步骤 1: 全局无时区初始化 ====================
-print("正在初始化全局无时区标准时间轴...")
-# 一步到位：转换全量原始时间、强行剥离所有潜在时区 (+00:00)、抹平秒以下精度
-df_final['order_time_jittered_std'] = (
-    pd.to_datetime(df_final['order_time_jittered'], errors='coerce')
-    .dt.tz_localize(None)  # 核心修复：将 Stanford 等带时区的数据彻底洗成 tz-naive
-    .dt.floor('s')
-)
-
-# ==================== 核心步骤 2: 仅针对 MGB 极端时间进行线性拉伸 ====================
-print("正在处理 MGB 极端时间拉伸...")
-def to_seconds_robust(val):
-    if pd.isna(val):
-        return None
-    s = str(val).replace('T', ' ').replace('Z', '')[:19]
-    try:
-        return datetime.strptime(s, '%Y-%m-%d %H:%M:%S').timestamp()
-    except ValueError:
-        try:
-            return datetime.strptime(s, '%Y-%m-%d').timestamp()
-        except ValueError:
-            return None
-
-# 仅抓取 MGB 部分计算 Unix 秒数
-mgb_seconds = df_final.loc[mask_mgb, 'order_time_jittered'].apply(to_seconds_robust)
-s_min = mgb_seconds.min()
-s_max = mgb_seconds.max()
-
-# 定义映射目标范围 (2015-2024)
-target_min = datetime(2015, 1, 1).timestamp()
-target_max = datetime(2024, 12, 31).timestamp()
-
-print("正在执行 MGB 线性映射与覆盖...")
-if s_max != s_min:
-    mgb_mapped_seconds = (mgb_seconds - s_min) / (s_max - s_min) * (target_max - target_min) + target_min
-    # 填回 MGB 槽位（此时两边都是纯粹的 datetime64[ns]，完美兼容，绝不报警）
-    df_final.loc[mask_mgb, 'order_time_jittered_std'] = (
-        pd.to_datetime(mgb_mapped_seconds, unit='s')
-        .dt.floor('s')
-    )
-else:
-    df_final.loc[mask_mgb, 'order_time_jittered_std'] = pd.Timestamp('2015-01-01')
-
-print("✨ [Omni-ARMD] 多中心时间戳终极无缝对齐完成！")
-
-ARMD=df_final
-
-ARMD.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/03_combined_microbiology_cultures_antibiotic_class_exposure2_std.csv')
-ARMD['antibiotic_class'].unique()
-ARMD['medication_name'].unique()
-# 1️⃣ 去掉缺失值
-df = ARMD[['antibiotic_class', 'medication_name']].dropna()
-# 2️⃣ 获取唯一组合
-unique_combinations = df.drop_duplicates()
-# 3️⃣ 按 antibiotic_class 排序，更清晰
-unique_combinations = unique_combinations.sort_values(by='antibiotic_class').reset_index(drop=True)
-# 4️⃣ 展示全部组合
-print("===== antibiotic_class 与 medication_name 唯一组合 =====")
-print(unique_combinations)
-unique_combinations.to_csv("antibiotic_medication_unique_ARMD.csv", index=False)
-CNSZ['medication_name'].unique()
-
+CNSZ_cleaned.to_csv('./03.microbiology_cultures_prior_med_std_time_anon.csv')
 
 ####################
 df = ARMD.copy()
