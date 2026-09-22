@@ -6,9 +6,7 @@ from datetime import datetime, timezone
 import pandas as pd
 from neo4j import GraphDatabase
 from openai import OpenAI
-# =========================
-# 1. 基础配置
-# =========================
+
 os.environ["no_proxy"] = ""
 os.environ["NO_PROXY"] = ""
 
