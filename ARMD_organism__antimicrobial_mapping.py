@@ -1,5 +1,6 @@
 import pandas as pd
-
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 1000)
 mapping_df = pd.read_excel('ARMD_organism_mapping.xlsx')
 
 data = data.merge(
@@ -8,7 +9,7 @@ data = data.merge(
     right_on='organism', 
     how='left'
 )
-
+data.to_csv('./data_deidentification.csv')
 
 
 import pandas as pd
@@ -21,3 +22,4 @@ data = data.merge(
     right_on='antimicrobial', 
     how='left'
 )
+data.to_csv('./data_deidentification.csv')
