@@ -2,33 +2,24 @@
 #########################01_combined_culture_cohort
 import os
 import pandas as pd
-# 设置显示的最大列数，None 表示显示所有列
 pd.set_option('display.max_columns', None)
-# 设置每行显示的宽度，防止自动换行
 pd.set_option('display.width', 1000)
-
-#MGB 以 Stanford 为主 schema，对齐同名字段 + 保留 MGB 扩展信息 + 缺失补 NaN
 df = pd.read_csv('./01_combined_culture_cohort2.csv')
-# 查看
-print(df)
-# 读取映射表
 map_df = pd.read_csv('./clean/organism_rename.txt', sep='\t', encoding='gbk')
-# 查看
+# 查
 print(map_df.head())
 
-# 2. 构建字典（统一大写匹配）
 mapping_dict = dict(zip(
     map_df['organism'].str.strip().str.upper(),
     map_df['organism_new'].str.strip()
 ))
 
-# 3. 创建新列（不覆盖原始数据）
 df['organism_std'] = (
     df['organism']
     .str.strip()
     .str.upper()
     .map(mapping_dict)
-    .fillna(df['organism'])   # 未匹配保持原值（原始写法）
+    .fillna(df['organism']) 
 )
 
 #查看未匹配项
@@ -40,7 +31,6 @@ df.loc[
 df['organism_std'].unique().tolist()
 
 ##########drug
-# 读取映射表
 map_dr = pd.read_csv('./clean/drug_rename.txt', sep='\t', encoding='gbk')
 # 查看
 print(map_dr.head())
