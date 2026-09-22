@@ -4,16 +4,15 @@ import pandas as pd
 import numpy as np
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 1000)
-ARMD=pd.read_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/11_combined_microbiology_cultures_prior_procedures2.csv')
+ARMD=pd.read_csv('./11_combined_microbiology_cultures_prior_procedures2.csv')
 CNSZ=pd.read_excel('./12.microbiology_cultures_priorprocedures.xlsx')
-CNSZ2=pd.read_csv('./01_culture_cohort_std_demographics_nursing_adi_all_rename_organism_antibiotic_demographics_ward.csv')
 ARMD.head()
 CNSZ.head()
 CNSZ = CNSZ.rename(columns={'住院号': 'anon_id'})
 CNSZ = CNSZ.rename(columns={'就诊流水号': 'pat_enc_csn_id_coded'})
 CNSZ["order_time_jittered"] = CNSZ["order_time_jittered_std"]
 CNSZ["source"] = "CNSZ"
-CNSZ.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/CNSZ/12.microbiology_cultures_priorprocedures_std.csv')
+CNSZ.to_csv('./12.microbiology_cultures_priorprocedures_std.csv')
 target_columns = [
     "anon_id",
     "pat_enc_csn_id_coded",
