@@ -20,7 +20,6 @@ patient_counts['ratio'] = patient_counts['patient_count'] / patient_counts['pati
 print(patient_counts)
 patient_counts.to_csv('./results/01_combined_culture_cohort.csv', index=False)
 
-#################records
 import pandas as pd
 df_tmp = df.copy()
 total_records = len(df_tmp)
