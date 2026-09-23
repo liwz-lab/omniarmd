@@ -1,43 +1,29 @@
 
 import os
 import pandas as pd
-# 设置显示的最大列数，None 表示显示所有列
 pd.set_option('display.max_columns', None)
-# 设置每行显示的宽度，防止自动换行
 pd.set_option('display.width', 1000)
 
-#MGB 以 Stanford 为主 schema，对齐同名字段 + 保留 MGB 扩展信息 + 缺失补 NaN
 df = pd.read_csv('./01_combined_culture_cohort3.csv')
-# 查看
 print(df)
 
 df_plot = df.copy()
 
-# 按 source 统计患者数（去重）
 patient_counts = (
     df_plot.groupby('source')['anon_id']
     .nunique()
     .reset_index(name='patient_count')
 )
 
-# 计算比例
 patient_counts['ratio'] = patient_counts['patient_count'] / patient_counts['patient_count'].sum()
 
 print(patient_counts)
 patient_counts.to_csv('./results/01_combined_culture_cohort.csv', index=False)
 
 #################records
-## 不同source和order_time_year记录数（records）
 import pandas as pd
-
-# 假设 df_tmp 是原始数据框
 df_tmp = df.copy()
-
-# 总记录数
 total_records = len(df_tmp)
-
-
-# 1️⃣ 总体（不分时间、不分地区）
 overall = pd.DataFrame({
     'source': ['All'],
     'year': ['All'],
@@ -45,9 +31,6 @@ overall = pd.DataFrame({
 })
 
 overall['record_ratio'] = overall['record_count'] / total_records
-
-
-# 2️⃣ 分地区（不分时间）
 by_source = (
     df_tmp.groupby('source')
     .size()
@@ -56,9 +39,6 @@ by_source = (
 
 by_source['year'] = 'All'
 by_source['record_ratio'] = by_source['record_count'] / total_records
-
-
-# 3️⃣ 分年份（不分地区）
 by_year = (
     df_tmp.groupby('order_time_year')
     .size()
@@ -69,9 +49,6 @@ by_year['source'] = 'All'
 by_year = by_year.rename(columns={'order_time_year': 'year'})
 
 by_year['record_ratio'] = by_year['record_count'] / total_records
-
-
-# 4️⃣ 分年份 + 分地区（核心🔥）
 by_year_source = (
     df_tmp.groupby(['order_time_year', 'source'])
     .size()
@@ -86,8 +63,6 @@ by_year_source['record_ratio'] = (
     by_year_source['record_count'] / total_records
 )
 
-
-# 5️⃣ 合并所有结果
 final_stats = pd.concat(
     [
         overall,
@@ -98,35 +73,25 @@ final_stats = pd.concat(
     ignore_index=True
 )
 
-
-# 排序（可选）
 final_stats = final_stats[
     ['source', 'year', 'record_count', 'record_ratio']
 ]
 
-
-# 显示最终结果
 print(final_stats)
 
 
-# 保存
 final_stats.to_csv(
     './results/02AMRD_record_count_ratio.csv',
     index=False
 )
-
-##不同Patients
 import pandas as pd
-# 假设 df_tmp 是原始数据框
 df_tmp = df.copy()
-# 1️⃣ 总体（不分时间、不分地区）
 overall = pd.DataFrame({
     'source': ['All'],
     'year': ['All'],
     'patient_count': [df_tmp['anon_id'].nunique()]
 })
 overall['patient_ratio'] = overall['patient_count'] / df_tmp['anon_id'].nunique()
-# 2️⃣ 分地区（不分时间）
 by_source = (
     df_tmp.groupby('source')['anon_id']
     .nunique()
@@ -134,7 +99,6 @@ by_source = (
 )
 by_source['year'] = 'All'
 by_source['patient_ratio'] = by_source['patient_count'] / df_tmp['anon_id'].nunique()
-# 3️⃣ 分年份（不分地区）
 by_year = (
     df_tmp.groupby('order_time_year')['anon_id']
     .nunique()
