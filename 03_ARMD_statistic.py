@@ -107,7 +107,7 @@ by_year = (
 by_year['source'] = 'All'
 by_year = by_year.rename(columns={'order_time_year': 'year'})
 by_year['patient_ratio'] = by_year['patient_count'] / df_tmp['anon_id'].nunique()
-# 4️⃣ 分年份 + 分地区（核心🔥）
+
 by_year_source = (
     df_tmp.groupby(['order_time_year', 'source'])['anon_id']
     .nunique()
@@ -115,39 +115,22 @@ by_year_source = (
 )
 by_year_source = by_year_source.rename(columns={'order_time_year': 'year'})
 by_year_source['patient_ratio'] = by_year_source['patient_count'] / df_tmp['anon_id'].nunique()
-# 5️⃣ 合并所有结果
 final_stats = pd.concat([overall, by_source, by_year, by_year_source], ignore_index=True)
-# 显示最终结果
 print(final_stats)
 final_stats.to_csv('./results/02AMRD_patient_count_ratio.csv')
 
 #######################################################patients
-## 不同 Patients
 import pandas as pd
-
-# 假设 df_tmp 是原始数据框
 df_tmp = df.copy()
-
-# ============================================================
-# 0️⃣ 构建跨 source 唯一的患者ID
-# ============================================================
-# anon_id 仅在各 source 内唯一，因此使用 source + anon_id
-# 作为患者的组合唯一标识
-
 df_tmp['patient_id'] = (
     df_tmp['source'].astype(str).str.strip() + '_' +
     df_tmp['anon_id'].astype(str).str.strip()
 )
 
-# 总患者数
 total_patients = df_tmp['patient_id'].nunique()
 
 print(f"Total unique patients: {total_patients}")
 
-
-# ============================================================
-# 1️⃣ 总体（不分时间、不分地区）
-# ============================================================
 
 overall = pd.DataFrame({
     'source': ['All'],
@@ -158,11 +141,6 @@ overall = pd.DataFrame({
 overall['patient_ratio'] = (
     overall['patient_count'] / total_patients
 )
-
-
-# ============================================================
-# 2️⃣ 分地区（不分时间）
-# ============================================================
 
 by_source = (
     df_tmp.groupby('source')['patient_id']
@@ -175,11 +153,6 @@ by_source['year'] = 'All'
 by_source['patient_ratio'] = (
     by_source['patient_count'] / total_patients
 )
-
-
-# ============================================================
-# 3️⃣ 分年份（不分地区）
-# ============================================================
 
 by_year = (
     df_tmp.groupby('order_time_year')['patient_id']
@@ -197,11 +170,6 @@ by_year['patient_ratio'] = (
     by_year['patient_count'] / total_patients
 )
 
-
-# ============================================================
-# 4️⃣ 分年份 + 分地区
-# ============================================================
-
 by_year_source = (
     df_tmp.groupby(
         ['order_time_year', 'source']
@@ -218,11 +186,6 @@ by_year_source['patient_ratio'] = (
     by_year_source['patient_count'] / total_patients
 )
 
-
-# ============================================================
-# 5️⃣ 合并所有结果
-# ============================================================
-
 final_stats = pd.concat(
     [
         overall,
@@ -233,89 +196,22 @@ final_stats = pd.concat(
     ignore_index=True
 )
 
-
-# ============================================================
-# 6️⃣ 查看结果
-# ============================================================
-
 print(final_stats)
-
 print("\nSource-specific patient counts:")
 print(by_source)
-
 print(f"\nTotal unique patients: {total_patients}")
-
-
-# ============================================================
-# 7️⃣ 保存
-# ============================================================
 
 final_stats.to_csv(
     './results/02AMRD_patient_count_ratio_0811.csv',
     index=False
 )
 
-
-
-
-
-
-
-
-###########################proc
-# import pandas as pd
-# # 假设 df_tmp 是原始数据框
-# df_tmp = df.copy()
-# # 1️⃣ 总体（不分时间、不分地区）
-# overall = pd.DataFrame({
-#     'source': ['All'],
-#     'year': ['All'],
-#     'proc_count': [df_tmp['order_proc_id_coded'].nunique()]
-# })
-# overall['proc_ratio'] = overall['proc_count'] / df_tmp['order_proc_id_coded'].nunique()
-# # 2️⃣ 分地区（不分时间）
-# by_source = (
-#     df_tmp.groupby('source')['order_proc_id_coded']
-#     .nunique()
-#     .reset_index(name='proc_count')
-# )
-# by_source['year'] = 'All'
-# by_source['proc_ratio'] = by_source['proc_count'] / df_tmp['order_proc_id_coded'].nunique()
-# # 3️⃣ 分年份（不分地区）
-# by_year = (
-#     df_tmp.groupby('order_time_year')['order_proc_id_coded']
-#     .nunique()
-#     .reset_index(name='proc_count')
-# )
-# by_year['source'] = 'All'
-# by_year = by_year.rename(columns={'order_time_year': 'year'})
-# by_year['proc_ratio'] = by_year['proc_count'] / df_tmp['order_proc_id_coded'].nunique()
-# # 4️⃣ 分年份 + 分地区（核心🔥）
-# by_year_source = (
-#     df_tmp.groupby(['order_time_year', 'source'])['order_proc_id_coded']
-#     .nunique()
-#     .reset_index(name='proc_count')
-# )
-# by_year_source = by_year_source.rename(columns={'order_time_year': 'year'})
-# by_year_source['proc_ratio'] = by_year_source['proc_count'] / df_tmp['order_proc_id_coded'].nunique()
-# # 5️⃣ 合并所有结果
-# final_stats = pd.concat([overall, by_source, by_year, by_year_source], ignore_index=True)
-# # 显示最终结果
-# print(final_stats)
-# final_stats.to_csv('AMRD_proc_count_ratio.csv')
-
 import pandas as pd
-# 1. 预筛选：既然统计的是样本数(proc_id)，先去重保留“样本-地区-年份”关系
-# 这能将 1200 万行压缩到约 100-200 万行样本级别，计算速度提升 10 倍
 df_proc_unique = df[['order_proc_id_coded', 'source', 'order_time_year']]
-# 获取总样本数作为分母
 total_procs = len(df_proc_unique)
 
 def get_proc_stats(df_in, group_cols, source_val='All', year_val='All'):
-    # 计算唯一 proc_id 的数量
     res = df_in.groupby(group_cols)['order_proc_id_coded'].nunique().reset_index(name='proc_count')
-
-    # 填充标签
     if 'source' not in res.columns: res['source'] = source_val
     if 'order_time_year' not in res.columns:
         res['year'] = year_val
@@ -324,8 +220,6 @@ def get_proc_stats(df_in, group_cols, source_val='All', year_val='All'):
 
     return res
 
-
-# 2. 计算各维度
 overall = pd.DataFrame({
     'source': ['All'], 'year': ['All'], 'proc_count': [total_procs]
 })
@@ -334,11 +228,10 @@ by_source = get_proc_stats(df_proc_unique, ['source'], year_val='All')
 by_year = get_proc_stats(df_proc_unique, ['order_time_year'], source_val='All')
 by_year_source = get_proc_stats(df_proc_unique, ['order_time_year', 'source'])
 
-# 3. 合并并计算比例
+
 final_proc_stats = pd.concat([overall, by_source, by_year, by_year_source], ignore_index=True)
 final_proc_stats['proc_ratio'] = final_proc_stats['proc_count'] / total_procs
 
-# 4. 排序：让汇总行 (All) 置顶
 final_proc_stats['year'] = final_proc_stats['year'].astype(str)
 final_proc_stats = final_proc_stats.sort_values(
     by=['source', 'year'],
