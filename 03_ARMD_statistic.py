@@ -119,7 +119,6 @@ final_stats = pd.concat([overall, by_source, by_year, by_year_source], ignore_in
 print(final_stats)
 final_stats.to_csv('./results/02AMRD_patient_count_ratio.csv')
 
-#######################################################patients
 import pandas as pd
 df_tmp = df.copy()
 df_tmp['patient_id'] = (
