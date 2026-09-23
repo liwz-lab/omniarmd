@@ -49,16 +49,8 @@ ks["gene_symbol"] = (
     .str.strip()
 )
 
-# master_v12 里叫 organism_std，所以这里改名，方便桥接
-
 
 bridge_keys = ["organism_std", "antimicrobial_std"]
-
-
-
-# ============================================================
-# 3. 生成 top gene 字段
-# ============================================================
 
 def top_resistance_genes(g, n=5):
     sub = g[g["GPAS"] > 0].copy()
@@ -100,9 +92,6 @@ top_susceptibility = (
     .reset_index()
 )
 
-# ============================================================
-# 4. 聚合成 Omni-Bridge species-antibiotic 特征表
-# ============================================================
 bridge_features = (
     ks
     .groupby(bridge_keys)
@@ -157,9 +146,6 @@ bridge_features = (
     .reset_index()
 )
 
-# ============================================================
-# 5. 聚合不同证据标签数量
-# ============================================================
 label_counts = (
     ks
     .pivot_table(
@@ -180,7 +166,7 @@ label_counts = label_counts.rename(columns={
     "strong_susceptibility": "ebi_n_strong_susceptibility_genes",
 })
 
-# 如果某些列不存在，补 0
+
 expected_label_cols = [
     "ebi_n_strong_resistance_genes",
     "ebi_n_moderate_resistance_genes",
@@ -192,10 +178,6 @@ expected_label_cols = [
 for col in expected_label_cols:
     if col not in label_counts.columns:
         label_counts[col] = 0
-
-# ============================================================
-# 6. 合并 top genes 和 label counts
-# ============================================================
 
 bridge_features = bridge_features.merge(
     label_counts,
@@ -219,7 +201,7 @@ bridge_features = bridge_features.merge(
 )
 
 
-# 7. 添加 Omni-Bridge 总体方向标签
+
 df = bridge_features.copy()
 
 df["direction_score"] = (
@@ -245,29 +227,24 @@ def risk_real_v3(row):
     d = row["direction_score"]
     e = row["evidence_score"]
 
-    # 强耐药
+
     if d > 1:
         return "high_resistant"
-    # 弱耐药
     elif d > 0.2:
         return "weak_resistant"
 
-    # 强敏感
     elif d < -1:
         return "high_susceptible"
-    # 弱敏感
     elif d < -0.2:
         return "weak_susceptible"
-
-    # 中性
     else:
         return "neutral"
 
 df["bridge_direction"] = df.apply(risk_real_v3, axis=1)
 df["bridge_direction"].value_counts()
-# 是否有 EBI/CNSZ 外部知识匹配
+
 df["knowledge_matched"] = 1
-# 8. 检查 bridge_features 是否一键一行
+
 # ============================================================
 bridge_features=df
 dup_bridge = bridge_features.duplicated(subset=bridge_keys).sum()
@@ -283,12 +260,10 @@ bridge_features.to_csv('./03_armd_resistance_evidence_deidentification.csv')
 import numpy as np
 from scipy.stats import spearmanr
 
-# 三种方法
 df["score_mean"] = df["ebi_mean_GPAS"]
 df["score_median"] = df["ebi_median_GPAS"]
 df["score_combo"] = 0.6*df["ebi_mean_GPAS"] + 0.4*df["ebi_median_GPAS"]
 
-# 和 evidence_score 的一致性（外部 proxy）
 for col in ["score_mean", "score_median", "score_combo"]:
     rho, _ = spearmanr(df[col], df["evidence_score"])
     print(col, rho)
@@ -299,22 +274,14 @@ import pandas as pd
 from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
 
-# 定义权重网格
 weights = np.linspace(0, 1, 21)  # 0.0 → 1.0 step 0.05
 
 results = []
 
 for w in weights:
     score = w * df["ebi_mean_GPAS"] + (1 - w) * df["ebi_median_GPAS"]
-
-    # 1. 和 external proxy 的一致性
     rho, _ = spearmanr(score, df["evidence_score"])
-
-    # 2. 分布稳定性（std 越大说明更极端）
     std = score.std()
-
-
-    # 3. 分类（用于 stability）
     def categorize(x):
         if x > 1:
             return "high_resistant"
@@ -341,14 +308,13 @@ for w in weights:
 res_df = pd.DataFrame(results)
 plt.figure()
 plt.plot(res_df["weight_mean"], res_df["spearman_rho"], marker='o')
-plt.axvline(0.6, linestyle='--')  # 你的方法
+plt.axvline(0.6, linestyle='--')  
 plt.xlabel("Weight on Mean GPAS")
 plt.ylabel("Spearman correlation with evidence_score")
 plt.title("Sensitivity analysis of weight parameter")
 plt.savefig('Sensitivity.png')
 plt.show()
 
-# 找最接近 0.6 的权重
 idx = (res_df["weight_mean"] - 0.6).abs().idxmin()
 baseline = res_df.loc[idx, "category"]
 
@@ -420,7 +386,7 @@ master_v12 = master_v12.filter(
 master_v12['susceptibility_std'].unique()
 antimicrobial_std=master_v12['antimicrobial_std'].unique()
 antimicrobial_std=antimicrobial_std.to_pandas()
-antimicrobial_std.to_csv('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/omni_bridge/antimicrobial_std.csv')
+antimicrobial_std.to_csv('antimicrobial_std.csv')
 master_v12
 import polars as pl
 master_v12 = master_v12.with_columns(
@@ -430,8 +396,8 @@ master_v12 = master_v12.with_columns(
         "Ecim": "NA"
     })
 )
-master_v12.write_parquet('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/merge_all/master_v12_infecting_organism_deidentification.parquet')
-master_v12 = pl.read_parquet('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/merge_all/master_v12_infecting_organism_deidentification.parquet')
+master_v12.write_parquet('master_v12_infecting_organism_deidentification.parquet')
+master_v12 = pl.read_parquet('master_v12_infecting_organism_deidentification.parquet')
 # master_v12 = master_v12.rename({
 #     "antibiotic_std": "antimicrobial_std"
 # })
@@ -447,12 +413,8 @@ master_v12_bridge_ready = master_v12.with_columns([
       .str.to_lowercase(),
 ])
 
-# ============================================================
-# 10. left join 到 master_v12，构建 master_v13_omni_bridge
-# ============================================================
-import polars as pl
 
-# 如果 bridge_features 是 pandas → 转成 polars
+import polars as pl
 if not isinstance(bridge_features, pl.DataFrame):
     bridge_features = pl.from_pandas(bridge_features)
 
@@ -475,10 +437,6 @@ assert master_v13_omni_bridge.height == old_n
 print("master_v12 rows:", old_n)
 print("master_v13_omni_bridge rows:", master_v13_omni_bridge.height)
 print("master_v13_omni_bridge shape:", master_v13_omni_bridge.shape)
-
-# ============================================================
-# 11. 没有匹配到外部证据的行补 0 / 标签
-# ============================================================
 
 count_cols = [
     "ebi_gene_count",
@@ -527,23 +485,18 @@ master_v13_omni_bridge = master_v13_omni_bridge.with_columns([
     if c in master_v13_omni_bridge.columns
 ])
 
-# score 列建议补 0，配合 ebi_knowledge_matched 使用
+
 master_v13_omni_bridge = master_v13_omni_bridge.with_columns([
     pl.col(c).fill_null(0)
     for c in score_cols
     if c in master_v13_omni_bridge.columns
 ])
 
-# text 列补默认值
 master_v13_omni_bridge = master_v13_omni_bridge.with_columns([
     pl.col("ebi_top_resistance_genes").fill_null(""),
     pl.col("ebi_top_susceptibility_genes").fill_null(""),
     pl.col("bridge_direction").fill_null("no_external_evidence"),
 ])
-
-# ============================================================
-# 12. 桥接匹配率 QC
-# ============================================================
 
 bridge_qc = master_v13_omni_bridge.select([
     pl.len().alias("n_rows"),
@@ -555,7 +508,6 @@ bridge_qc = master_v13_omni_bridge.select([
 
 print(bridge_qc)
 
-# 按 organism 统计匹配率
 bridge_match_by_organism = (
     master_v13_omni_bridge
     .group_by("organism_std")
@@ -567,7 +519,6 @@ bridge_match_by_organism = (
     .sort("n_rows", descending=True)
 )
 
-# 按 antibiotic 统计匹配率
 bridge_match_by_antibiotic = (
     master_v13_omni_bridge
     .group_by("antimicrobial_std")
@@ -579,7 +530,6 @@ bridge_match_by_antibiotic = (
     .sort("n_rows", descending=True)
 )
 
-# 未匹配高频组合
 master_v13_omni_bridge = master_v13_omni_bridge.with_columns(
     pl.col("knowledge_matched").fill_null(0)
 )
@@ -596,13 +546,7 @@ unmatched_priority_pairs = (
 print("Top unmatched pairs:")
 print(unmatched_priority_pairs.head(30))
 
-# ============================================================
-# 13. 输出文件
-# ============================================================
-
-base_out_dir = ('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/omni_bridge/')
-
-# 如果目录不存在，需要先在系统里 mkdir -p base_out_dir
+base_out_dir = ('./omni_bridge/')
 
 # bridge_features.to_csv(
 #     base_out_dir + "omni_bridge_species_antibiotic_features_deidentification0725.csv",
@@ -639,8 +583,8 @@ import numpy as np
 import polars as pl
 import os
 
-os.chdir('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/omni_bridge/0730')
-# 统一 master_v12 key
+os.chdir('')
+
 master_v13_omni_bridge = pl.read_parquet('master_v13_bridge_deidentification_mapping0730.parquet')
 import polars as pl
 
@@ -660,9 +604,7 @@ master_v13_omni_bridge = master_v13_omni_bridge.filter(
     .is_in(["ecim", "mcim"])
 )
 
-# 1. Omni-Bridge 桥接覆盖分析
-# 哪些临床记录成功挂载了外部证据？
-# 哪些菌-药组合没有外部证据？
+
 bridge_overall = master_v13_omni_bridge.select([
     pl.len().alias("n_rows"),
     pl.col("knowledge_matched").sum().alias("n_matched"),
@@ -696,11 +638,10 @@ bridge_by_antibiotic = (
 )
 bridge_by_antibiotic.write_csv("01_bridge_by_antibiotic3_0730.csv")
 
-###################2. 高频匹配组合分析
 import polars as pl
 
 # ============================================================
-# 1. 所有 unique organism-antimicrobial pairs
+#  unique organism-antimicrobial pairs
 # ============================================================
 
 all_pairs = (
@@ -716,9 +657,6 @@ all_pairs = (
     .unique()
 )
 
-# ============================================================
-# 2. 有 molecular evidence 的 unique pairs
-# ============================================================
 
 supported_pairs = (
     master_v13_omni_bridge
@@ -733,10 +671,6 @@ supported_pairs = (
     ])
     .unique()
 )
-
-# ============================================================
-# 3. 统计
-# ============================================================
 
 n_total_pairs = all_pairs.height
 n_supported_pairs = supported_pairs.height
@@ -893,20 +827,7 @@ pair_by_organism.write_csv(
 #######################################
 import polars as pl
 
-# ============================================================
-# 0. 基础数据
-# ============================================================
-
 df = master_v13_omni_bridge
-
-
-# ============================================================
-# 1. Organism-level: Record coverage
-# ============================================================
-# 含义：
-# n_records             = 该 organism 的 AST 记录数
-# n_records_supported   = 属于有 molecular evidence 的 pair 的 AST 记录数
-# record_coverage_pct   = n_records_supported / n_records × 100
 
 record_by_organism = (
     df
@@ -931,17 +852,6 @@ record_by_organism = (
     )
 )
 
-
-# ============================================================
-# 2. Organism-level: Unique pair coverage
-# ============================================================
-# 先得到唯一的 organism-antimicrobial pair
-#
-# 每个 pair 只保留一次
-#
-# n_unique_antimicrobial_pairs = 该 organism 对应的 antimicrobial pair 数
-# n_supported_pairs            = 有 molecular evidence 的 pair 数
-# pair_coverage_pct             = supported pairs / all pairs × 100
 
 pair_status = (
     df
@@ -979,11 +889,6 @@ pair_by_organism = (
     )
 )
 
-
-# ============================================================
-# 3. 合并两个表
-# ============================================================
-
 organism_coverage = (
     record_by_organism
     .join(
@@ -998,9 +903,6 @@ organism_coverage = (
 )
 
 
-# ============================================================
-# 4. 保留需要的字段
-# ============================================================
 
 organism_coverage = organism_coverage.select([
     "organism_std",
@@ -1012,10 +914,6 @@ organism_coverage = organism_coverage.select([
     "pair_coverage_pct"
 ])
 
-
-# ============================================================
-# 5. 查看前 5 个 organism
-# ============================================================
 
 print(
     organism_coverage.head(5)
@@ -1047,16 +945,10 @@ organism_coverage_display = (
 
 print(organism_coverage_display.head(5))
 
-
-# ============================================================
-# 6. 保存
-# ============================================================
-
 organism_coverage.write_csv(
     "OmniBridge_organism_coverage.csv"
 )
 
-########哪些 ARMD 高频菌-药组合有外部证据？
 matched_pairs = (
     master_v13_omni_bridge
     .filter(pl.col("knowledge_matched") == 1)
@@ -1100,8 +992,6 @@ matched_pairs_detail = (
 )
 
 matched_pairs_detail.write_csv("matched_pairs_detail0730.csv")
-###################2. 高频未匹配组合分析
-########哪些 ARMD 高频菌-药组合缺少外部证据？
 unmatched_pairs = (
     master_v13_omni_bridge
     .filter(pl.col("knowledge_matched") == 0)
@@ -1131,12 +1021,7 @@ high_freq_unmatched = (
 )
 
 high_freq_unmatched.write_csv("high_freq_unmatched0730.csv")
-# 补充 EBI 证据
-# 建立 relaxed bridge
-# 指导数据库后续扩展
 
-#######################3. 临床耐药率统计
-#不同菌-药组合在 ARMD 中真实 R / I / S 分布如何？
 armd_resistance_rate = (
     master_v13_omni_bridge
     .filter(pl.col("susceptibility_std").is_in(["S", "I", "R"]))
@@ -1154,9 +1039,6 @@ armd_resistance_rate = (
     .sort("n_ast", descending=True)
 )
 
-# =========================================
-# 2. 提取 EBI 特征（去重到 菌-药 层级）
-# =========================================
 ebi_features = (
     master_v13_omni_bridge
     .select([
@@ -1180,9 +1062,7 @@ ebi_features = (
     .unique()
 )
 
-# =========================================
-# 3. 合并 ARMD + EBI
-# =========================================
+
 merged = (
     armd_resistance_rate
     .join(
@@ -1229,28 +1109,18 @@ armd_vs_ebi_pd[[
     "ebi_mean_max_GPAS"
 ]].corr()
 armd_vs_ebi_pd.to_csv("04_armd_vs_ebi_pd0730.csv")
-
-
-#################################5. 强耐药证据组合分析
-###########哪些临床记录对应外部强耐药证据？
 import polars as pl
-
-# 1️⃣ 只保留有强耐药基因的记录（你这步是对的）
 strong_resistance_records = (
     master_v13_omni_bridge
     .filter(pl.col("ebi_n_strong_resistance_genes") > 0)
 )
-
-# 2️⃣ 聚合到「菌-药对」
 strong_resistance_pairs = (
-    strong_resistance_records   # ⚠️ 注意这里要用过滤后的
+    strong_resistance_records  
     .group_by(["organism_std", "antimicrobial_std"])
     .agg([
         pl.len().alias("n_records"),
         pl.col("ebi_n_strong_resistance_genes").mean().alias("mean_strong_resistance_genes"),
         pl.col("ebi_max_GPAS").mean().alias("mean_ebi_max_GPAS"),
-
-        # 🔥 关键：把 list 展平 + 去重
         pl.col("ebi_top_resistance_genes")
         .explode()
         .drop_nulls()
@@ -1259,62 +1129,34 @@ strong_resistance_pairs = (
     ])
 )
 
-# 3️⃣ 🔥 转成 CSV 友好格式
 strong_resistance_pairs = strong_resistance_pairs.with_columns(
     pl.col("genes_list")
-    .list.join(",")   # 👉 list → string
+    .list.join(",")  
     .alias("strong_resistance_genes")
 ).drop("genes_list")
 
-# 4️⃣ 排序
+
 strong_resistance_pairs = strong_resistance_pairs.sort(
     "mean_ebi_max_GPAS",
     descending=True
 )
 
-# 5️⃣ 输出
 strong_resistance_pairs.write_csv("05_strong_resistance_pairs0730.csv")
 
-#
-# strong_resistance_records = (
-#     master_v13_omni_bridge
-#     .filter(pl.col("ebi_n_strong_resistance_genes") > 0)
-# )
-#
-# strong_resistance_pairs = (
-#     master_v13_omni_bridge
-#     .group_by(["organism_std", "antibiotic_std"])
-#     .agg([
-#         pl.len().alias("n_records"),
-#         pl.col("ebi_n_strong_resistance_genes").mean().alias("mean_strong_resistance_genes"),
-#         pl.col("ebi_max_GPAS").mean().alias("mean_ebi_max_GPAS"),
-#         pl.col("ebi_top_resistance_genes").alias("ebi_top_resistance_genes")
-#     ])
-#     .sort("mean_ebi_max_GPAS", descending=True)
-# )
-# strong_resistance_pairs.write_csv("05_strong_resistance_pairs.csv")
 
-
-#####################6. 强敏感证据组合分析
-###哪些基因-药物证据更偏敏感？
-import polars as pl
-
-# 1️⃣ 只保留有强耐药基因的记录（你这步是对的）
 strong_susceptibility_records = (
     master_v13_omni_bridge
     .filter(pl.col("ebi_n_strong_susceptibility_genes") > 0)
 )
 
-# 2️⃣ 聚合到「菌-药对」
 strong_susceptibility_pairs = (
-    strong_susceptibility_records   # ⚠️ 注意这里要用过滤后的
+    strong_susceptibility_records
     .group_by(["organism_std", "antimicrobial_std"])
     .agg([
         pl.len().alias("n_records"),
         pl.col("ebi_n_strong_susceptibility_genes").mean().alias("mean_strong_susceptibility_genes"),
         pl.col("ebi_max_GPAS").mean().alias("mean_ebi_max_GPAS"),
 
-        # 🔥 关键：把 list 展平 + 去重
         pl.col("ebi_top_susceptibility_genes")
         .explode()
         .drop_nulls()
@@ -1323,39 +1165,21 @@ strong_susceptibility_pairs = (
     ])
 )
 
-# 3️⃣ 🔥 转成 CSV 友好格式
+
 strong_susceptibility_pairs = strong_susceptibility_pairs.with_columns(
     pl.col("genes_list")
-    .list.join(",")   # 👉 list → string
+    .list.join(",")   
     .alias("strong_susceptibility_genes")
 ).drop("genes_list")
 
-# 4️⃣ 排序
+
 strong_susceptibility_pairs = strong_susceptibility_pairs.sort(
     "mean_ebi_max_GPAS",
     descending=True
 )
 
-# 5️⃣ 输出
 strong_susceptibility_pairs.write_csv("06_strong_susceptibility_pairs0730.csv")
 
-#
-# strong_susceptibility_pairs = (
-#     master_v13_omni_bridge
-#     .filter(pl.col("ebi_n_strong_susceptibility_genes") > 0)
-#     .group_by(["organism_std", "antibiotic_std"])
-#     .agg([
-#         pl.len().alias("n_records"),
-#         pl.col("ebi_n_strong_susceptibility_genes").mean().alias("mean_strong_susceptibility_genes"),
-#         pl.col("ebi_min_GPAS").mean().alias("mean_ebi_min_GPAS"),
-#     ])
-#     .sort("mean_ebi_min_GPAS")
-# )
-# strong_susceptibility_pairs.write_csv("06_strong_susceptibility_pairs.csv")
-#
-
-############################7. 既往用药 × 外部证据 × 当前耐药
-############既往抗生素暴露是否增强外部证据对应的当前耐药风险？
 carbapenem_analysis = (
     master_v13_omni_bridge
     .filter(pl.col("susceptibility_std").is_in(["S", "I", "R"]))
@@ -1367,12 +1191,10 @@ carbapenem_analysis = (
     ])
     .sort(["sub_exp_Carbapenem", "bridge_direction"])
 )
-##这可以做临床解释。
+
 carbapenem_analysis = pd.DataFrame([carbapenem_analysis])
 carbapenem_analysis.to_csv("07_carbapenem_analysis0727.csv", index=False)
 
-##########################8. 既往感染菌 × 当前耐药风险
-###既往感染过同类耐药菌的患者，当前 R 风险是否更高？
 prior_infection_analysis = (
     master_v13_omni_bridge
     .filter(pl.col("susceptibility_std").is_in(["S", "I", "R"]))
@@ -1386,8 +1208,6 @@ prior_infection_analysis = (
 prior_infection_analysis = pd.DataFrame([prior_infection_analysis])
 prior_infection_analysis.to_csv("08_prior_infection_analysis0727.csv", index=False)
 
-###############################9. 患者亚组分析
-#例如 ICU vs 非 ICU：
 icu_analysis = (
     master_v13_omni_bridge
     .filter(pl.col("susceptibility_std").is_in(["S", "I", "R"]))
@@ -1399,7 +1219,7 @@ icu_analysis = (
 )
 icu_analysis = pd.DataFrame([icu_analysis])
 icu_analysis.to_csv("09_icu_analysis0727.csv", index=False)
-########################10. 时间趋势分析
+
 yearly_trend = (
     master_v13_omni_bridge
     .filter(pl.col("susceptibility_std").is_in(["S", "I", "R"]))
@@ -1414,7 +1234,8 @@ yearly_trend = (
 
 yearly_trend = pd.DataFrame([yearly_trend])
 yearly_trend.to_csv("10_yearly_trend0727.csv", index=False)
-#######################12. Agent 证据解释分析
+
+
 agent_evidence_cases = (
     master_v13_omni_bridge
     .filter(pl.col("knowledge_matched") == 1)
@@ -1431,26 +1252,6 @@ agent_evidence_cases = (
 )
 agent_evidence_cases = pd.DataFrame([agent_evidence_cases])
 agent_evidence_cases.to_csv("12_agent_evidence_cases0727.csv", index=False)
-
-# 最有价值的论文分析
-#
-# 优先做这 5 个：
-#
-# Omni-Bridge 覆盖率分析
-# 证明数据库桥接成功。
-#
-# ARMD vs EBI 外部证据一致性分析
-# 证明外部证据有临床意义。
-#
-# 强耐药证据菌-药组合排行榜
-# 展示高风险知识图谱。
-#
-# 既往用药/既往感染 × Omni-Bridge 证据 × 当前耐药
-# 展示临床解释价值。
-#
-# 临床模型 vs 临床+Omni-Bridge 模型性能对比
-# 证明 Omni-Bridge 能提升预测。
-
 
 
 
