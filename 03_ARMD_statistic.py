@@ -239,27 +239,17 @@ final_proc_stats = final_proc_stats.sort_values(
 print(final_proc_stats)
 final_proc_stats.to_csv('results/AMRD_count_ratio_order_proc_id_coded.csv', index=False)
 
-
-###########################culture
 import pandas as pd
-# 直接使用 df，不进行 drop_duplicates()
 df_stats = df[['source', 'order_time_year', 'culture_description']].copy()
-# 统一格式（可选，防止因为大小写导致同类被拆分）
-#df_stats['culture_description'] = df_stats['culture_description'].str.upper().fillna('UNKNOWN')
-# 2. 修复后的统计函数
-def get_culture_counts(df_in, group_cols, source_label='All', year_label='All'):
-    # 计算各类型的数量
-    stats = df_in.groupby(group_cols + ['culture_description']).size().reset_index(name='record_count')
 
-    # 修复 ValueError: No group keys passed!
+def get_culture_counts(df_in, group_cols, source_label='All', year_label='All'):
+    stats = df_in.groupby(group_cols + ['culture_description']).size().reset_index(name='record_count')
     if not group_cols:
         group_totals = stats['record_count'].sum()
     else:
         group_totals = stats.groupby(group_cols)['record_count'].transform('sum')
 
     stats['record_ratio'] = stats['record_count'] / group_totals
-
-    # 填充标签，确保 All 被正确标记
     if 'source' not in stats.columns:
         stats['source'] = source_label
 
@@ -270,29 +260,14 @@ def get_culture_counts(df_in, group_cols, source_label='All', year_label='All'):
 
     return stats
 
-
-# 3. 分步执行统计
 print("正在计算各项指标...")
-# 1️⃣ 总体 (All Source, All Year)
 overall = get_culture_counts(df_stats, [], 'All', 'All')
-
-# 2️⃣ 分地区 (By Source, All Year)
 by_source = get_culture_counts(df_stats, ['source'], None, 'All')
-
-# 3️⃣ 分年份 (All Source, By Year)
 by_year = get_culture_counts(df_stats, ['order_time_year'], 'All', None)
-
-# 4️⃣ 分年份 + 地区 (By Source, By Year)
 by_year_source = get_culture_counts(df_stats, ['order_time_year', 'source'], None, None)
-
-# 4. 合并所有结果
 final_culture_distribution = pd.concat([overall, by_source, by_year, by_year_source], ignore_index=True)
-
-# 5. 格式化输出：将 'year' 统一为字符串，方便排序和 CSV 保存
 final_culture_distribution['year'] = final_culture_distribution['year'].astype(str)
 
-# 6. 排序逻辑：让 'All' 排在前面，年份按顺序排，每个组内按数量降序
-# 我们通过一个自定义排序权重来实现
 final_culture_distribution['s_sort'] = final_culture_distribution['source'].apply(
     lambda x: '0' if x == 'All' else '1' + x)
 final_culture_distribution['y_sort'] = final_culture_distribution['year'].apply(
@@ -303,32 +278,18 @@ final_culture_distribution = final_culture_distribution.sort_values(
     ascending=[True, True, False]
 ).drop(columns=['s_sort', 'y_sort'])
 
-# 7. 保存
 final_culture_distribution.to_csv('results/AMRD_culture_record_distribution_final.csv', index=False)
 
-# 验证结果
-print("\n--- 验证总体合并 (All + All) ---")
 print(final_culture_distribution[
           (final_culture_distribution['source'] == 'All') & (final_culture_distribution['year'] == 'All')].head())
-
-print("\n--- 验证地区合并 (Source + All) ---")
 print(final_culture_distribution[
           (final_culture_distribution['source'] != 'All') & (final_culture_distribution['year'] == 'All')].head())
-
-print("\n--- 验证年份合并 (All + Year) ---")
 print(final_culture_distribution[
           (final_culture_distribution['source'] == 'All') & (final_culture_distribution['year'] != 'All')].head())
 
-##不同organism_std 反映的是物种覆盖度。只要不同地区都在测同一种病原体，这个比例的和就一定会大于 1
 import pandas as pd
-# 1. 预筛选：既然只统计 organism_std 的种类，先去重可以极大提升速度
-# 只保留对统计有用的列，并去重
 df_stats = df[['source', 'order_time_year', 'organism_std']].drop_duplicates()
-
-# 全局总种类数（作为分母）
 total_species = df_stats['organism_std'].nunique()
-
-# 定义统计辅助函数减少重复代码
 def get_stats(df_in, group_cols, source_val, year_val):
     res = (
         df_in.groupby(group_cols)['organism_std']
@@ -340,7 +301,6 @@ def get_stats(df_in, group_cols, source_val, year_val):
     else: res = res.rename(columns={'order_time_year': 'year'})
     return res
 
-# 执行多维度统计
 overall = pd.DataFrame({
     'source': ['All'], 'year': ['All'], 'organism_count': [total_species]
 })
@@ -348,33 +308,21 @@ overall = pd.DataFrame({
 by_source = get_stats(df_stats, ['source'], None, 'All')
 by_year = get_stats(df_stats, ['order_time_year'], 'All', None)
 by_year_source = get_stats(df_stats, ['order_time_year', 'source'], None, None)
-
-# 合并
 final_stats = pd.concat([overall, by_source, by_year, by_year_source], ignore_index=True)
-
-# 计算比例
 final_stats['organism_ratio'] = final_stats['organism_count'] / total_species
-
-# 调整列顺序使其更美观
 final_stats = final_stats[['source', 'year', 'organism_count', 'organism_ratio']]
 
 print(final_stats)
 final_stats.to_csv('results/AMRD_organism_std_count_ratio.csv', index=False)
 
-##
-
-#####trend time
 import pandas as pd
 df_tmp = df.copy()
-# ⚠️ 处理时间（去掉NA，比如ECUH）
 df_tmp = df_tmp.dropna(subset=['order_time_year'])
-# 1️⃣ 每年 × 每中心（去重患者数）
 trend = (
     df_tmp.groupby(['order_time_year', 'source'])['anon_id']
     .nunique()
     .reset_index(name='patient_count')
 )
-# 2️⃣ 总体趋势（所有中心合并）
 trend_total = (
     df_tmp.groupby('order_time_year')['anon_id']
     .nunique()
@@ -382,7 +330,6 @@ trend_total = (
 )
 trend_total['source'] = 'All'
 
-# 合并
 trend_all = pd.concat([trend, trend_total], ignore_index=True)
 trend_all.to_csv('results/AMRD_trend_all_time.csv')
 
