@@ -1,11 +1,11 @@
-
-import os
+from datetime import datetime, timezone
 import json
 import logging
-from datetime import datetime, timezone
-import pandas as pd
+import os
+
 from neo4j import GraphDatabase
 from openai import OpenAI
+import pandas as pd
 
 os.environ["no_proxy"] = ""
 os.environ["NO_PROXY"] = ""
@@ -60,15 +60,16 @@ def safe_bool(x):
 
 
 # =========================
-# 3. 读取和清洗 knowledge_summary_valid
+# 3. Read and Clean knowledge_summary_valid
 # =========================
+
 
 def load_knowledge_summary(path):
     if not os.path.exists(path):
-        raise FileNotFoundError(f"找不到输入文件: {path}")
+        raise FileNotFoundError(f"Input file not found: {path}")
 
     df = pd.read_csv(path, low_memory=False)
-    logger.info(f"原始 knowledge_summary: {df.shape}")
+    logger.info(f"Raw knowledge_summary shape: {df.shape}")
 
     required_cols = [
         "organism_std",
@@ -89,21 +90,18 @@ def load_knowledge_summary(path):
         "gene_prevalence_in_R",
         "gene_prevalence_in_Non_S",
         "gene_prevalence_in_S",
-        #"valid_for_log_odds",
-        #"comparison_status",
         "log_odds_non_s_vs_s",
         "evidence_n",
         "GPAS",
         "evidence_level",
         "resistance_evidence_label",
-        #"evidence_direction",
         "resistance_evidence_label_cn",
         "valid",
     ]
 
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
-        raise ValueError(f"输入表缺少字段: {missing}")
+        raise ValueError(f"Missing required columns in input table: {missing}")
 
     out = pd.DataFrame()
 
@@ -137,15 +135,10 @@ def load_knowledge_summary(path):
     for col in numeric_cols:
         out[col] = df[col].map(safe_float)
 
-    #out["valid_for_log_odds"] = df["valid_for_log_odds"].map(safe_bool)
-
     text_cols = [
-        #"comparison_status",
         "evidence_level",
         "resistance_evidence_label",
-        #"evidence_direction",
         "resistance_evidence_label_cn",
-        #"resistance_evidence_color",
     ]
 
     for col in text_cols:
@@ -166,7 +159,7 @@ def load_knowledge_summary(path):
         f"OMNI_EVIDENCE_{i:08d}" for i in range(len(out))
     ]
 
-    logger.info(f"清洗后可导入证据: {out.shape}")
+    logger.info(f"Cleaned importable evidence shape: {out.shape}")
 
     return out
 
@@ -175,13 +168,13 @@ def load_knowledge_summary(path):
 # 4. Neo4j Schema
 # =========================
 
+
 def init_neo4j_schema(driver):
     cypher_list = [
         "CREATE CONSTRAINT gene_symbol IF NOT EXISTS FOR (g:Gene) REQUIRE g.symbol IS UNIQUE",
         "CREATE CONSTRAINT species_name IF NOT EXISTS FOR (s:Species) REQUIRE s.name IS UNIQUE",
         "CREATE CONSTRAINT antibiotic_name IF NOT EXISTS FOR (a:Antibiotic) REQUIRE a.name IS UNIQUE",
         "CREATE CONSTRAINT evidence_id IF NOT EXISTS FOR (e:Evidence) REQUIRE e.evidence_id IS UNIQUE",
-
         "CREATE INDEX evidence_GPAS IF NOT EXISTS FOR (e:Evidence) ON (e.GPAS)",
         "CREATE INDEX evidence_level IF NOT EXISTS FOR (e:Evidence) ON (e.evidence_level)",
         "CREATE INDEX evidence_label IF NOT EXISTS FOR (e:Evidence) ON (e.resistance_evidence_label)",
@@ -192,12 +185,13 @@ def init_neo4j_schema(driver):
         for cypher in cypher_list:
             session.run(cypher)
 
-    logger.info("Neo4j schema 初始化完成")
+    logger.info("Neo4j schema initialization complete")
 
 
 # =========================
-# 5. 批量导入 Neo4j
+# 5. Batch Import to Neo4j
 # =========================
+
 
 def import_batch(tx, records):
     cypher = """
@@ -261,16 +255,17 @@ def import_to_neo4j(driver, df, batch_size=500):
 
     with driver.session() as session:
         for start in range(0, total, batch_size):
-            batch = records[start:start + batch_size]
+            batch = records[start : start + batch_size]
             session.execute_write(import_batch, batch)
-            logger.info(f"已导入 {min(start + batch_size, total)}/{total}")
+            logger.info(f"Imported {min(start + batch_size, total)}/{total}")
 
-    logger.info("全部 knowledge_summary 证据导入 Neo4j 完成")
+    logger.info("All knowledge_summary evidence successfully imported into Neo4j")
 
 
 # =========================
-# 6. 检索函数
+# 6. Retrieval Functions
 # =========================
+
 
 def query_species_antibiotic_evidence(driver, species, antibiotic, top_n=20):
     cypher = """
@@ -337,13 +332,14 @@ def query_gene_evidence(driver, gene_symbol, top_n=20):
 
 
 # =========================
-# 7. LLM 生成回答
+# 7. LLM Answer Generation
 # =========================
+
 
 def generate_rag_answer(query, evidence_rows):
     if not OPENROUTER_API_KEY:
         raise RuntimeError(
-            "未设置 OPENROUTER_API_KEY。请先执行: export OPENROUTER_API_KEY='你的key'"
+            "OPENROUTER_API_KEY is not set. Please execute: export OPENROUTER_API_KEY='your_key'"
         )
 
     client = OpenAI(
@@ -401,8 +397,9 @@ Do not invent mechanisms or citations not present in the context.
 
 
 # =========================
-# 8. 主流程
+# 8. Main Workflow
 # =========================
+
 
 def main():
     df = load_knowledge_summary(DATASET_PATH)
@@ -438,7 +435,9 @@ def main():
             print(row)
 
         if not evidence_rows:
-            print("\n未检索到相关证据，请检查 organism_std / antimicrobial_std 是否匹配。")
+            print(
+                "\nNo relevant evidence found. Please check whether organism_std / antimicrobial_std matches."
+            )
             return
 
         scientific_query = (
@@ -460,7 +459,7 @@ def main():
             f.write(f"Query: {scientific_query}\n\n")
             f.write(answer)
 
-        print(f"\n报告已保存: {output_file_path}")
+        print(f"\nReport saved: {output_file_path}")
 
     finally:
         driver.close()
@@ -469,5 +468,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
