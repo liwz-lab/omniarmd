@@ -334,36 +334,7 @@ trend_all = pd.concat([trend, trend_total], ignore_index=True)
 trend_all.to_csv('results/AMRD_trend_all_time.csv')
 
 df['susceptibility_std'].value_counts()
-########order_proc_id_coded
-# import pandas as pd
-# df_tmp = df.copy()
-# # ⚠️ 处理时间（去掉NA，比如ECUH）
-# df_tmp = df_tmp.dropna(subset=['order_time_year'])
-# # 1️⃣ 每年 × 每中心（去重患者数）
-# trend = (
-#     df_tmp.groupby(['order_time_year', 'source'])['order_proc_id_coded']
-#     .nunique()
-#     .reset_index(name='proc_count')
-# )
-# # 2️⃣ 总体趋势（所有中心合并）
-# trend_total = (
-#     df_tmp.groupby('order_time_year')['order_proc_id_coded']
-#     .nunique()
-#     .reset_index(name='proc_count')
-# )
-# trend_total['source'] = 'All'
-#
-# # 合并
-# trend_all = pd.concat([trend, trend_total], ignore_index=True)
-# # 将年份转为统一格式，并按照年份、source 排序
-# trend_all['order_time_year'] = trend_all['order_time_year'].astype(int)
-# trend_all = trend_all.sort_values(['order_time_year', 'source'], ascending=[True, True])
-#
-# # 把 'All' 放到每个年份组的最前面（可选）
-# trend_all['is_total'] = trend_all['source'] == 'All'
-# trend_all = trend_all.sort_values(['order_time_year', 'is_total'], ascending=[True, False]).drop(columns='is_total')
-# trend_all.to_csv('AMRD_trend_all_time_proc.csv')
-#根据CLSI（临床和实验室标准协会）的标准，细菌耐药率的计算通常采用公式：（R + I）/（R + I + S）
+
 
 import pandas as pd
 df_tmp = df.copy()
