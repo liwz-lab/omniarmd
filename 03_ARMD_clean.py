@@ -55,14 +55,6 @@ df['antibiotic'].unique().tolist()
 
 df['antibiotic_std'] = df['antibiotic_std'].str.replace('\xa0', ' ', regex=False)
 
-df['antibiotic_std'] = df['antibiotic_std'].replace({
-    'Ceftazidime/avibactam': 'ceftazidime/avibactam'
-})
-df['antibiotic_std'] = df['antibiotic_std'].replace({
-    'NA': 'nan',
-    'Ecim': 'ecim',
-    'Mcim': 'mcim',
-})
 df['antibiotic_std'].unique().tolist()
 
 df['antibiotic'].unique().tolist()
