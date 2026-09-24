@@ -268,7 +268,7 @@ for col in ["score_mean", "score_median", "score_combo"]:
     rho, _ = spearmanr(df[col], df["evidence_score"])
     print(col, rho)
 
-########################################################
+
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
@@ -334,7 +334,7 @@ plt.savefig('bridge_stability.pdf')
 plt.show()
 res_df.to_csv('GPAS_stability.csv')
 
-##############################################
+
 import matplotlib.pyplot as plt
 
 plt.hist(df["direction_score"], bins=50)
@@ -346,9 +346,8 @@ plt.title("Distribution of direction_score")
 plt.savefig('Distribution of direction_score.png')
 plt.show()
 
-###################
-import seaborn as sns
 
+import seaborn as sns
 sns.histplot(df["direction_score"], bins=50, kde=True)
 
 bins = {
@@ -360,15 +359,9 @@ bins = {
 }
 print(bins)
 
-
-# ============================================================
-# 9. 转成 Polars，准备合并到 master_v12
-# ============================================================
 import polars as pl
 bridge_features_pl = pl.from_pandas(bridge_features)
-
-# 统一 master_v12 key
-master_v12 = pl.read_parquet('/public8/lilab/student/htang/SMART/临床重要耐药菌基因型表型数据库/ARMD/merge2/merge3/merge_all/master_v12_infecting_organism_deidentification.parquet')
+master_v12 = pl.read_parquet('master_v12_infecting_organism_deidentification.parquet')
 master_v12.columns
 master_v12 = master_v12.with_columns([
     pl.col("organism_std").replace("NA", None),
@@ -548,12 +541,9 @@ print(unmatched_priority_pairs.head(30))
 
 base_out_dir = ('./omni_bridge/')
 
-# bridge_features.to_csv(
-#     base_out_dir + "omni_bridge_species_antibiotic_features_deidentification0725.csv",
-#     index=False
-# )
+
 bridge_features.write_csv(
-    base_out_dir + "omni_bridge_species_antibiotic_features_deidentification0730.csv"
+    base_out_dir + "omni_bridge_species_antibiotic_features_deidentification.csv"
 )
 bridge_match_by_organism.write_csv(
     base_out_dir + "bridge_match_by_organism0730.csv"
@@ -639,10 +629,6 @@ bridge_by_antibiotic = (
 bridge_by_antibiotic.write_csv("01_bridge_by_antibiotic3_0730.csv")
 
 import polars as pl
-
-# ============================================================
-#  unique organism-antimicrobial pairs
-# ============================================================
 
 all_pairs = (
     master_v13_omni_bridge
@@ -991,7 +977,7 @@ matched_pairs_detail = (
     .sort("n_records", descending=True)
 )
 
-matched_pairs_detail.write_csv("matched_pairs_detail0730.csv")
+matched_pairs_detail.write_csv("matched_pairs_detail.csv")
 unmatched_pairs = (
     master_v13_omni_bridge
     .filter(pl.col("knowledge_matched") == 0)
@@ -1017,7 +1003,7 @@ unmatched_pairs_detail = (
 unmatched_pairs_detail.write_csv("unmatched_pairs_detail0730.csv")
 high_freq_unmatched = (
     unmatched_pairs_detail
-    .filter(pl.col("n_records") >= 500)   # 阈值可调
+    .filter(pl.col("n_records") >= 500) 
 )
 
 high_freq_unmatched.write_csv("high_freq_unmatched0730.csv")
@@ -1078,13 +1064,10 @@ merged = (
 merged2 = merged.filter(
     pl.col("knowledge_matched") == 1
 )
-# 8. 输出主表（可用于所有作图）
-# =========================================
-merged2.write_csv("03_armd_resistance_evidence0730-2.csv")
+
+merged2.write_csv("03_armd_resistance_evidence.csv")
 
 
-################################4. ARMD 临床耐药率 vs EBI 外部证据对比
-#本地临床耐药率和外部数据库证据是否一致？
 armd_vs_ebi = (
     master_v13_omni_bridge
     .filter(pl.col("knowledge_matched") == 1)
@@ -1100,7 +1083,7 @@ armd_vs_ebi = (
         pl.col("ebi_max_GPAS").mean().alias("ebi_mean_max_GPAS"),
     ])
 )
-armd_vs_ebi.write_csv("04_armd_vs_ebi0727.csv")
+armd_vs_ebi.write_csv("04_armd_vs_ebi.csv")
 armd_vs_ebi_pd = armd_vs_ebi.to_pandas()
 
 armd_vs_ebi_pd[[
@@ -1178,7 +1161,7 @@ strong_susceptibility_pairs = strong_susceptibility_pairs.sort(
     descending=True
 )
 
-strong_susceptibility_pairs.write_csv("06_strong_susceptibility_pairs0730.csv")
+strong_susceptibility_pairs.write_csv("06_strong_susceptibility_pairs.csv")
 
 carbapenem_analysis = (
     master_v13_omni_bridge
@@ -1206,7 +1189,7 @@ prior_infection_analysis = (
     ])
 )
 prior_infection_analysis = pd.DataFrame([prior_infection_analysis])
-prior_infection_analysis.to_csv("08_prior_infection_analysis0727.csv", index=False)
+prior_infection_analysis.to_csv("08_prior_infection_analysis.csv", index=False)
 
 icu_analysis = (
     master_v13_omni_bridge
@@ -1218,7 +1201,7 @@ icu_analysis = (
     ])
 )
 icu_analysis = pd.DataFrame([icu_analysis])
-icu_analysis.to_csv("09_icu_analysis0727.csv", index=False)
+icu_analysis.to_csv("09_icu_analysis.csv", index=False)
 
 yearly_trend = (
     master_v13_omni_bridge
@@ -1251,7 +1234,7 @@ agent_evidence_cases = (
     ])
 )
 agent_evidence_cases = pd.DataFrame([agent_evidence_cases])
-agent_evidence_cases.to_csv("12_agent_evidence_cases0727.csv", index=False)
+agent_evidence_cases.to_csv("12_agent_evidence_cases.csv", index=False)
 
 
 
